@@ -617,7 +617,7 @@ def run_gui(
                 gr.Markdown(
                     value="""* SPAR is a Python package and a web interface for measuring short text documents using semantic projection.
                     * The package is part of the manuscript ISR-2022-128 (under review). It is still considered a research prototype and under active development. 
-                    * The source code is available on [GitHub](https://github.com/ISR-2022-128/SPAR_measure) under GPLv3 license.""",
+                    * The source code is available on [GitHub](https://github.com/maifeng/SPAR_measure) under GPLv3 license.""",
                     label="",
                 )
         example_row = gr.Row(visible=False, variant="panel")
