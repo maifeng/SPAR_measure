@@ -361,7 +361,7 @@ class Meaurement:
                 + [
                     gr.Textbox.update(
                         visible=True,
-                        value=f"⚠️ Please check that you have filled in all the dimension names and queries. \n  Error message: {e}.",
+                        value=f"⚠️ Please check that you have filled in all the dimension names and queries. You can move the slider 'Number of dimensions' on the top to add or remove dimensions. \n  Error message: {e}.",
                     )
                 ]
                 + [gr.File.update(visible=False)]
@@ -452,7 +452,7 @@ class Meaurement:
                 [
                     gr.Textbox.update(
                         visible=True,
-                        value=f"⚠️ Error: Please check your scale definitions. Make sure that you have clicked the Embed Queries and Save Dimensions button in Tab 2, and there is no empty scales or dimensions. \nError message: {e}",
+                        value=f"⚠️ Error: Please check your scale definitions. Make sure that you have clicked the Embed Queries and Save Dimensions button in Tab 2, and there is no empty scales or dimensions. You can move the slider 'Number of scales' on the top to add or remove scales. \nError message: {e}",
                     )
                 ]
                 + [gr.File.update(visible=False)]
@@ -915,7 +915,7 @@ def run_gui(
             )
 
             gr.Markdown(
-                value=" 📖 Enter the names of the scales and select the relevant dimensions. Then click the Save Scales button to compute the scale embedding vectors. Each scale is computed by first averaging the dimension embedding vectors in the positive and negative dimensions, and then taking the difference between the two vectors. Each scale must contain at least one positive dimension. ",
+                value=" 📖 Enter the names of the scales and select the relevant dimensions. Then click the Save Scales button to compute the scale embedding vectors. \n📖 Scales are linear combinations of dimensions. e.g., Safety (Scale) = Safe (Positive Dimension) - Danger (Negative Dimension); Efficiency (Scale) = Productivity (Positive Dimension) - Waste (Negative Dimension); Wellness (Scale) = Physical Health (Positive Dimension) + Mental Health (Positive Dimension) - Illness (Negative Dimension) - Stress (Negative Dimension). \n📖 Each scale is computed by first averaging the dimension embedding vectors in the positive and negative dimensions, and then taking the difference. Each scale must contain at least one positive dimension; the negative dimension is optional. ",
                 label="",
             )
             for i in range(10):
