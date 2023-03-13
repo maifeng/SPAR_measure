@@ -33,7 +33,7 @@ If you find SPAR useful in your work, please cite the following paper:
 ## Installation and Quick Start
 Simply click the following button and run the code in the notebook to launch SPAR in Google Colab for quick testing:
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/maifeng/SPAR_measure/resources/example_colab.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/maifeng/SPAR_measure/blob/master/resources/example_colab.ipynb)
 
 You can also install SPAR on your own machine. It is recommended to use a virtual environment and upgrade pip first with `pip install -U pip`. SPAR can be installed via pip: 
 
