@@ -31,7 +31,7 @@ If you find SPAR useful in your work, please cite the following paper:
 **Please note that the project is currently in a research preview (pre-alpha) stage**. To view the planned features for the project, please see the [Road Map](ROADMAP.MD).
 
 ## Installation and Quick Start
-Simply click the following button and run the code in the notebook to launch SPAR in Google Colab for quick testing:
+To quickly launch SPAR in Google Colab, click the following button and run the notebook code:
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/maifeng/SPAR_measure/blob/master/resources/example_colab.ipynb)
 

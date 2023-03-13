@@ -10,6 +10,7 @@ import openai
 import pandas as pd
 import torch
 import torch.nn.functional as F
+from numpy.linalg import inv
 from transformers import AutoModel, AutoTokenizer
 
 from . import util_funcs
@@ -191,6 +192,7 @@ class Meaurement:
                 sentence_embeddings = torch.cat(sentence_embeddings, dim=0)
                 # to cpu and numpy
                 sentence_embeddings = sentence_embeddings.cpu().detach().numpy()
+                print(f"Shape of sentence embeddings: {sentence_embeddings.shape}")
                 assert sentence_embeddings.shape[0] == len(sentences)
 
         else:
@@ -209,6 +211,7 @@ class Meaurement:
             sentence_embeddings = sentence_embeddings / np.linalg.norm(
                 sentence_embeddings, axis=1, keepdims=True
             )
+            print(f"Shape of sentence embeddings: {sentence_embeddings.shape}")
 
         return sentence_embeddings
 
@@ -460,29 +463,44 @@ class Meaurement:
                 + [gr.Markdown.update(visible=True)]
             )
 
-    def measure_docs(self, whitening: str, measurement_state):
-        scale_measures = []
+    def measure_docs(self, single_subspace: str, whitening: str, measurement_state):
+        print(
+            f"Measuring with the following arguments: single_subspace={single_subspace}, whitening={whitening}."
+        )
+        scales_embs = []
         for scale in list(measurement_state["scale_definitions"].keys()):
+            scales_embs.append(measurement_state["scale_embeddings"][scale])
+        scales_embs = np.stack(scales_embs).T
+
+        # normalize scales_embs
+        scales_embs = scales_embs / np.linalg.norm(scales_embs, axis=0, keepdims=True)
+        scales_embs = scales_embs.T
+        if single_subspace == "No":
             measures = (
-                util_funcs.pytorch_cos_sim(
+                util_funcs.dot_score(
                     measurement_state["embeddings"],
-                    measurement_state["scale_embeddings"][scale],
+                    scales_embs,
                 )
                 .cpu()
                 .numpy()
             )
-            # change measures to one dimensional array
-            measures = measures.reshape(measures.shape[0])
-            scale_measures.append(measures)
+        else:
+            # measures = [(S'S)^-1]S'X where S is the scale embeddings and X is the document embeddings
+            measures = (
+                inv((scales_embs).dot(scales_embs.T))
+                .dot(scales_embs)
+                .dot(measurement_state["embeddings"].T)
+            )
+            measures = measures.T
 
-        scale_measures = np.stack(scale_measures).T
-        if whitening == "ZCA":
+        if whitening == "Yes":
             # whitening
-            trf = ZCA().fit(scale_measures)
-            scale_measures = trf.transform(scale_measures)
-        scale_measures = scale_measures.round(4)
+            trf = ZCA().fit(measures)
+            measures = trf.transform(measures)
+
         # output as csv to File
-        scale_measures = pd.DataFrame(scale_measures)
+        scale_measures = pd.DataFrame(measures)
+        scale_measures = scale_measures.round(4)
         scale_measures.columns = list(measurement_state["scale_definitions"].keys())
         scale_measures[measurement_state["doc_id_col_name"]] = measurement_state[
             "input_df"
@@ -587,7 +605,6 @@ def run_gui(
     mode="local",
     username=None,
     password=None,
-    device="cpu",
     **kwargs,
 ):
     Path(out_dir).mkdir(parents=True, exist_ok=True)
@@ -1016,10 +1033,16 @@ def run_gui(
                 label="",
             )
             with gr.Row(variant="panel"):
+                single_subspace_radio_btn = gr.Radio(
+                    choices=["Yes", "No"],
+                    value="No",
+                    label="Single subspace: Select 'Yes' if all k scales span a single k-d subspace (recommended for reducing correlation when scales are similar in meaning). Select 'No' to treat each scale as a separate subspace.",
+                    visible=True,
+                )
                 whitening_radio_btn = gr.Radio(
-                    choices=["None", "ZCA"],
-                    value="ZCA",
-                    label="Whitening: used to decorrelate the scores of the semantic projection. We recommend using ZCA in most applications, especially if the scales are theoretically orthogonal.",
+                    choices=["Yes", "No"],
+                    value="Yes",
+                    label="Whitening Output: Select 'Yes' to decorrelate the scores after semantic projection (recommended if the scales are theoretically orthogonal). ",
                     visible=True,
                 )
             measure_button = gr.Button("Measure Documents Using Semantic Projection")
@@ -1028,7 +1051,11 @@ def run_gui(
             measure_results_file = gr.File(visible=False)
             measure_button.click(
                 fn=m.measure_docs,
-                inputs=[whitening_radio_btn, state],
+                inputs=[
+                    single_subspace_radio_btn,
+                    whitening_radio_btn,
+                    state,
+                ],
                 outputs=[measure_result, measure_results_file, measure_results_file],
             )
         example_btn.click(

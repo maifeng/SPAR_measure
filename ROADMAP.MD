@@ -2,6 +2,7 @@ This document provides a high-level overview of the current state of the project
 
 ## Infrastructure
 * Support out-of-memory embedding index and searching
+* Projection onto general subspaces
 * Save/recover entire user state 
 * Testing non-English languages
 * Create API
