@@ -69,12 +69,14 @@ See full documentation for other usage options [here](resources/Manual.MD).
 
 <img src="resources/imgs/sc1.png" alt="sc1" style="width: 100%;"/>
 
-1. Define a set of dimensions and generic seeds. For example:
+2. Define a set of dimensions and generic seeds. For example:
    * `Creative`: *"We should adapt and innovate."*
    * `Positive emotion`: *"We are happy."*
    * `Danger`: *"It is dangerous."*
+
+<img src="resources/imgs/sc2.png" alt="sc2a" style="width: 100%;"/>
   
-2. Using the generic seeds as query, search for sentences in the corpus that are similar to the generic seeds. 
+3. Using the generic seeds as query, search for sentences in the corpus that are similar to the generic seeds. 
     For example:
 
    * `Creative`: 
@@ -89,15 +91,16 @@ See full documentation for other usage options [here](resources/Manual.MD).
 
     Enter the final context-specific exemplary sentences to the query box and click the "Embed Queries and Save Dimensions" button. The average embedding vectors of the exemplary sentences will be used to define the scale for measuring the documents.
 
-<img src="resources/imgs/sc2.png" alt="sc2" style="width: 100%;"/>
+<img src="resources/imgs/sc2b.png" alt="sc2b" style="width: 100%;"/>
+<img src="resources/imgs/sc2c.png" alt="sc2c" style="width: 100%;"/>
 
-3. Define scales, which consists of one or more demensions. For example:  
+4. Define scales, which consists of one or more demensions. For example:  
      * `Sentiment = Positive emotion - Negative emotion`
      * `Creativity = Creative` 
 
 <img src="resources/imgs/sc3.png" alt="sc3" style="width: 100%;"/>
 
-1. Project the document embeddings onto the scale. A CSV file with the results can be downloaded.
+5. Project the document embeddings onto the scale. A CSV file with the results can be downloaded.
 
 <img src="resources/imgs/sc4.png" alt="sc4" style="width: 100%;"/>
 
