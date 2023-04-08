@@ -689,7 +689,7 @@ def run_gui(
                 )
 
             gr.Markdown(
-                value=""" 📖 Select an embedding method. You can use Sentence Transformers to embed the text locally; in this case you can use the default model name (all-MiniLM-L6-v2) or [any other models](https://www.sbert.net/docs/pretrained_models.html).
+                value=""" 📖 Select an embedding method. You can use Sentence Transformers to embed the text locally; in this case you can use the default model name (all-MiniLM-L6-v2) or [any other models](https://www.sbert.net/docs/pretrained_models.html). Larger models will take longer to embed but may produce better results.
                 Alternatively, you can use the [OpenAI API](https://platform.openai.com/docs/guides/embeddings/what-are-embeddings) to embed (text-embedding-ada-002 model). You can get an API key [here](https://platform.openai.com/account/api-keys). """,
             )
 
