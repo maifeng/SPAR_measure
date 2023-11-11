@@ -64,9 +64,9 @@ class Meaurement:
                 "input_df"
             ].columns.tolist()
             print(f"Columns: {measurement_state['col_names']}")
-        return gr.Dropdown.update(
+        return gr.Dropdown(
             choices=measurement_state["col_names"], interactive=True
-        ), gr.Dropdown.update(choices=measurement_state["col_names"], interactive=True)
+        ), gr.Dropdown(choices=measurement_state["col_names"], interactive=True)
 
     def read_input_embedding(self, file_obj, measurement_state):
         measurement_state["embeddings"] = np.load(file_obj[0].name)
@@ -76,7 +76,7 @@ class Meaurement:
             msg = f"Error: The number of rows in the input data and the number of rows in the embedding matrix do not match! The shape of the embeddings is {measurement_state['embeddings'].shape}, and the number of rows in the input data is {len(measurement_state['input_df'])}. "
         else:
             msg = f"Precomputed embedding uploaded! \nThe shape of the embeddings is {measurement_state['embeddings'].shape}. Proceed to the next tab to define the dimensions."
-        return gr.Textbox.update(value=msg), gr.Button.update(visible=False)
+        return gr.Textbox(value=msg), gr.Button(visible=False)
 
     def set_doc_col(self, doc_col_name, doc_id_col_name, measurement_state):
         print(f"Setting doc_col_name to {doc_col_name}")
@@ -88,7 +88,7 @@ class Meaurement:
         if measurement_state["input_df"].columns.tolist() is not None:
             if doc_id_col_name in measurement_state["input_df"].columns.tolist():
                 measurement_state["doc_id_col_name"] = doc_id_col_name
-        return gr.Textbox.update(value="Column names set!")
+        return gr.Textbox(value="Column names set!")
 
     def set_sbert(self, model_name, measurement_state):
         print(f"Setting SBERT model to {model_name}")
@@ -110,7 +110,7 @@ class Meaurement:
                 print("Using API key from textbox.")
             except Exception as e:
                 print(e)
-                return gr.Textbox.update(
+                return gr.Textbox(
                     value="⚠️ Invalid API key. Please try again.", visible=True
                 )
         else:
@@ -118,7 +118,7 @@ class Meaurement:
             try:
                 measurement_state["openai_api_key"] = os.environ["OPENAI_API_KEY"]
             except Exception as e:
-                return gr.Textbox.update(
+                return gr.Textbox(
                     value="⚠️ Invalid API key in OPENAI_API_KEY environment variable. Please try again.",
                     visible=True,
                 )
@@ -129,15 +129,15 @@ class Meaurement:
     ):
         if embedding_model_dropdown.startswith("Sentence Transformers"):
             return (
-                gr.Textbox.update(visible=True),
-                gr.Textbox.update(visible=False),
-                gr.Button.update(value="Set Embedding Model"),
+                gr.Textbox(visible=True),
+                gr.Textbox(visible=False),
+                gr.Button(value="Set Embedding Model"),
             )
         if embedding_model_dropdown.startswith("OpenAI"):
             return (
-                gr.Textbox.update(visible=False),
-                gr.Textbox.update(visible=True),
-                gr.Button.update(value="Set Embedding Model"),
+                gr.Textbox(visible=False),
+                gr.Textbox(visible=True),
+                gr.Button(value="Set Embedding Model"),
             )
 
     def set_embedding_model(
@@ -154,16 +154,16 @@ class Meaurement:
         if embedding_model_dropdown.startswith("OpenAI"):
             self.set_openai_api_key(openai_api_key, measurement_state)
             measurement_state["use_openAI"] = True
-        return gr.Button.update(value="Embedding model set!")
+        return gr.Button(value="Embedding model set!")
 
     def reset_set_emb_btn(self):
-        return gr.Button.update(value="Set Embedding Model")
+        return gr.Button(value="Set Embedding Model")
 
     def set_embedding_option(self, embedding_option):
         if embedding_option == "Upload Precomputed Embeddings":
-            return gr.File.update(visible=True), gr.Button.update(visible=False)
+            return gr.File(visible=True), gr.Button(visible=False)
         if embedding_option == "Embed Documents":
-            return gr.File.update(visible=False), gr.Button.update(visible=True)
+            return gr.File(visible=False), gr.Button(visible=True)
 
     @classmethod
     def embed_texts(cls, sentences, progress, measurement_state):
@@ -233,18 +233,18 @@ class Meaurement:
                 Path(self.path_mgt.out_dir, "embeddings.npy").exists()
             ):
                 return (
-                    gr.Textbox.update(
+                    gr.Textbox(
                         value=f"Embedding completed! \nThe shape of the embeddings is {measurement_state['embeddings'].shape}. You can download and save the embeddings below. Proceed to the next tab to define the dimensions."
                     ),
-                    gr.File.update(visible=True),
+                    gr.File(visible=True),
                     Path(self.path_mgt.out_dir, "embeddings.npy"),
                 )
         except Exception as e:
             return (
-                gr.Textbox.update(
+                gr.Textbox(
                     value=f"⚠️ Embedding failed! Make sure that you have clicked Confirm Column Selections and Set Embedding Model. \nError message: {e}"
                 ),
-                gr.File.update(visible=False),
+                gr.File(visible=False),
                 None,
             )
 
@@ -254,9 +254,9 @@ class Meaurement:
         measurement_state["n_dims"] = n_rows
         for i in range(10):
             if i < n_rows:
-                update_rows.append(gr.Row.update(visible=True))
+                update_rows.append(gr.Row(visible=True))
             else:
-                update_rows.append(gr.Row.update(visible=False))
+                update_rows.append(gr.Row(visible=False))
         return update_rows
 
     def toggle_row_vis_scales(self, n_rows, measurement_state):
@@ -265,9 +265,9 @@ class Meaurement:
         measurement_state["n_scales"] = n_rows
         for i in range(10):
             if i < n_rows:
-                update_rows.append(gr.Row.update(visible=True))
+                update_rows.append(gr.Row(visible=True))
             else:
-                update_rows.append(gr.Row.update(visible=False))
+                update_rows.append(gr.Row(visible=False))
         return update_rows
 
     def semantic_search(
@@ -279,7 +279,7 @@ class Meaurement:
         # remove empty queries or queries with only spaces
         queries = [q for q in queries if q.strip() != ""]
         if (len(queries) == 0) or (queries is None) or all(q == "" for q in queries):
-            return gr.Textbox.update(value="No query provided!")
+            return gr.Textbox(value="No query provided!")
         try:
             query_embedding = self.embed_texts(
                 queries, progress=progress, measurement_state=measurement_state
@@ -312,7 +312,7 @@ class Meaurement:
             result_str = (
                 f"⚠️ Error. Make sure the query is not empty. \nError message: {e}"
             )
-        return gr.Textbox.update(value=result_str)
+        return gr.Textbox(value=result_str)
 
     def save_dims(self, measurement_state, progress=gr.Progress(), *dims_boxes):
         try:
@@ -340,39 +340,31 @@ class Meaurement:
                 json.dump(measurement_state["dim_queries"], f)
             # update both positive and negative scale selectors
             return (
-                [
-                    gr.Dropdown.update(
-                        choices=list(measurement_state["dim_queries"].keys())
-                    )
-                ]
+                [gr.Dropdown(choices=list(measurement_state["dim_queries"].keys()))]
                 * 20
                 + [
-                    gr.Textbox.update(
+                    gr.Textbox(
                         visible=True,
                         value=f"Dimensions saved: {list(measurement_state['dim_queries'].keys())}. You can download the json file below to keep a record of the final queries. Proceed to the next tab to define scales.",
                     )
                 ]
-                + [gr.File.update(visible=True)]
+                + [gr.File(visible=True)]
                 + [Path(self.path_mgt.out_dir, "dimensions_queries.json")]
-                + [gr.Markdown.update(visible=False)]
+                + [gr.Markdown(visible=False)]
             )
         except Exception as e:
             return (
-                [
-                    gr.Dropdown.update(
-                        choices=list(measurement_state["dim_queries"].keys())
-                    )
-                ]
+                [gr.Dropdown(choices=list(measurement_state["dim_queries"].keys()))]
                 * 20
                 + [
-                    gr.Textbox.update(
+                    gr.Textbox(
                         visible=True,
                         value=f"⚠️ Please check that you have filled in all the dimension names and queries. You can move the slider 'Number of dimensions' on the top to add or remove dimensions. \n  Error message: {e}.",
                     )
                 ]
-                + [gr.File.update(visible=False)]
+                + [gr.File(visible=False)]
                 + [None]
-                + [gr.Markdown.update(visible=True)]
+                + [gr.Markdown(visible=True)]
             )
 
     def save_scales(self, measurement_state, *scale_boxes):
@@ -443,27 +435,27 @@ class Meaurement:
 
             return (
                 [
-                    gr.Textbox.update(
+                    gr.Textbox(
                         visible=True,
                         value=f"Scales saved: {list(measurement_state['scale_definitions'].keys())}. You can download the json file below to keep a record of the scale definitions. Proceed to the next tab to measure using semantic projection.",
                     )
                 ]
-                + [gr.File.update(visible=True)]
+                + [gr.File(visible=True)]
                 + [Path(self.path_mgt.out_dir, "scale_definitions.json")]
-                + [gr.Markdown.update(visible=False)]
+                + [gr.Markdown(visible=False)]
             )
         except Exception as e:
             # return error message in textbox update
             return (
                 [
-                    gr.Textbox.update(
+                    gr.Textbox(
                         visible=True,
                         value=f"⚠️ Error: Please check your scale definitions. Make sure that you have clicked the Embed Queries and Save Dimensions button in Tab 2, and there is no empty scales or dimensions. You can move the slider 'Number of scales' on the top to add or remove scales. \nError message: {e}",
                     )
                 ]
-                + [gr.File.update(visible=False)]
+                + [gr.File(visible=False)]
                 + [None]
-                + [gr.Markdown.update(visible=True)]
+                + [gr.Markdown(visible=True)]
             )
 
     def measure_docs(self, single_subspace: str, whitening: str, measurement_state):
@@ -518,11 +510,11 @@ class Meaurement:
             Path(self.path_mgt.out_dir, "measurement_output.csv"), index=False
         )
         return (
-            gr.Textbox.update(
+            gr.Textbox(
                 visible=True,
                 value="Measurement completed. Download the results below. ",
             ),
-            gr.File.update(visible=True),
+            gr.File(visible=True),
             Path(self.path_mgt.out_dir, "measurement_output.csv"),
         )
 
@@ -545,14 +537,14 @@ class Meaurement:
         for i in range(10):
             if i < len(CVFDemo().dim_names):
                 all_dim_name_boxes_updates.append(
-                    gr.Textbox.update(value=f"{CVFDemo().dim_names[i]}")
+                    gr.Textbox(value=f"{CVFDemo().dim_names[i]}")
                 )
                 all_dim_seed_boxes_updates.append(
-                    gr.Textbox.update(value=f"{CVFDemo().dim_seeds[i]}")
+                    gr.Textbox(value=f"{CVFDemo().dim_seeds[i]}")
                 )
             else:
-                all_dim_name_boxes_updates.append(gr.Textbox.update(value=""))
-                all_dim_seed_boxes_updates.append(gr.Textbox.update(value=""))
+                all_dim_name_boxes_updates.append(gr.Textbox(value=""))
+                all_dim_seed_boxes_updates.append(gr.Textbox(value=""))
 
         # tab 3
         all_scale_name_boxes_updates = []
@@ -563,17 +555,13 @@ class Meaurement:
         for i in range(10):
             if i < 2:
                 all_scale_name_boxes_updates.append(
-                    gr.Textbox.update(value=demo_scale_names[i])
+                    gr.Textbox(value=demo_scale_names[i])
                 )
                 all_scale_pos_selector_updates.append(
-                    gr.Textbox.update(
-                        value=CVFDemo().scales[demo_scale_names[i]]["Positive"]
-                    )
+                    gr.Textbox(value=CVFDemo().scales[demo_scale_names[i]]["Positive"])
                 )
                 all_scale_neg_selector_updates.append(
-                    gr.Textbox.update(
-                        value=CVFDemo().scales[demo_scale_names[i]]["Negative"]
-                    )
+                    gr.Textbox(value=CVFDemo().scales[demo_scale_names[i]]["Negative"])
                 )
             else:
                 all_scale_name_boxes_updates.append(None)
@@ -582,24 +570,24 @@ class Meaurement:
 
         return (
             [
-                gr.Row.update(visible=True),
+                gr.Row(visible=True),
                 Path(self.path_mgt.sample_data_dir, "sample_text.csv"),
                 Path(self.path_mgt.sample_data_dir, "sample_emb.npy"),
-                gr.Radio.update(value="Embed Documents"),
-                gr.Textbox.update(
+                gr.Radio(value="Embed Documents"),
+                gr.Textbox(
                     value="""Embedding completed! The shape of the embeddings is (2000, 384). You can download and save the embeddings below. Proceed to the next tab to define the dimensions."""
                 ),
-                gr.Dropdown.update(value="text"),
-                gr.Dropdown.update(value="doc_id"),
-                gr.Dropdown.update(value="Sentence Transformers (Local)"),
-                gr.Textbox.update(value="all-MiniLM-L6-v2"),
+                gr.Dropdown(value="text"),
+                gr.Dropdown(value="doc_id"),
+                gr.Dropdown(value="Sentence Transformers (Local)"),
+                gr.Textbox(value="all-MiniLM-L6-v2"),
             ]
             + all_dim_name_boxes_updates
             + all_dim_seed_boxes_updates
             + all_scale_name_boxes_updates
             + all_scale_pos_selector_updates
             + all_scale_neg_selector_updates
-            + [gr.Slider.update(value=4), gr.Slider.update(value=2)]
+            + [gr.Slider(value=4), gr.Slider(value=2)]
         )
 
 
@@ -761,18 +749,21 @@ def run_gui(
                 fn=m.set_embedding_option,
                 inputs=upload_emb_choice,
                 outputs=[input_embedding_uploader, embed_btn],
+                api_name=False,
             )
 
             input_file.change(
                 fn=m.read_csv_cols,
                 inputs=[input_file, state],
                 outputs=[doc_col_selector, doc_id_col_selector],
+                api_name=False,
             )
 
             input_embedding_uploader.change(
                 fn=m.read_input_embedding,
                 inputs=[input_embedding_uploader, state],
                 outputs=[emb_result_txtbox, embed_btn],
+                api_name=False,
             )
             embedding_model_dropdown.change(
                 fn=m.toggle_embedding_model_visibility,
@@ -780,6 +771,7 @@ def run_gui(
                     embedding_model_dropdown,
                 ],
                 outputs=[sbert_model_textbox, openai_api_key, set_emb_btn],
+                api_name=False,
             )
             sbert_model_textbox.change(
                 fn=m.reset_set_emb_btn,
@@ -790,11 +782,13 @@ def run_gui(
                 fn=m.set_openai_api_key,
                 inputs=[openai_api_key, state],
                 outputs=[emb_result_txtbox],
+                api_name=False,
             )
             embed_btn.click(
                 fn=m.embed_df,
                 inputs=state,
                 outputs=[emb_result_txtbox, emb_results_file, emb_results_file],
+                api_name=False,
             )
         with gr.Tab("2. Define Dimensions and Semantic Search"):
             gr.Markdown(
@@ -897,16 +891,24 @@ def run_gui(
                         )
 
             n_dim_slider.change(
-                fn=m.toggle_row_vis, inputs=[n_dim_slider, state], outputs=all_rows_dims
+                fn=m.toggle_row_vis,
+                inputs=[n_dim_slider, state],
+                outputs=all_rows_dims,
+                api_name=False,
             )
             for box in all_search_query_boxes:
-                box.change(fn=m.toggle_row_vis, inputs=[n_dim_slider, state])
+                box.change(
+                    fn=m.toggle_row_vis,
+                    inputs=[n_dim_slider, state],
+                    api_name=False,
+                )
 
             for dim_i, btn in enumerate(all_search_btns):
                 btn.click(
                     fn=m.semantic_search,
                     inputs=[all_search_query_boxes[dim_i], n_results_slider, state],
                     outputs=all_search_results[dim_i],
+                    api_name=False,
                 )
             gr.Markdown(
                 value=" 📖 After defining the dimensions with final context-specific queries, click 'Embed Queries and Save Dimensions' button below to embed the queries and save the definitions. Each dimension must contain at least one final query.",
@@ -995,13 +997,26 @@ def run_gui(
                 fn=m.toggle_row_vis_scales,
                 inputs=[n_scale_slider, state],
                 outputs=all_rows_scale,
+                api_name=False,
             )
             for box in all_scale_name_boxes:
-                box.change(fn=m.toggle_row_vis_scales, inputs=[n_scale_slider, state])
+                box.change(
+                    fn=m.toggle_row_vis_scales,
+                    inputs=[n_scale_slider, state],
+                    api_name=False,
+                )
             for box in all_scale_pos_selector:
-                box.change(fn=m.toggle_row_vis_scales, inputs=[n_scale_slider, state])
+                box.change(
+                    fn=m.toggle_row_vis_scales,
+                    inputs=[n_scale_slider, state],
+                    api_name=False,
+                )
             for box in all_scale_neg_selector:
-                box.change(fn=m.toggle_row_vis_scales, inputs=[n_scale_slider, state])
+                box.change(
+                    fn=m.toggle_row_vis_scales,
+                    inputs=[n_scale_slider, state],
+                    api_name=False,
+                )
             save_scale_button = gr.Button("Save Scales")
             scale_define_results = gr.Textbox(visible=False, label="")
             scale_def_file_download = gr.File(visible=False)
