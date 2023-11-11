@@ -3,7 +3,6 @@ This document provides a high-level overview of the current state of the project
 ## Infrastructure
 * Support out-of-memory embedding index and searching
 * Save/recover entire user state 
-* Testing non-English languages
 * Create API
 
 ## User Interface

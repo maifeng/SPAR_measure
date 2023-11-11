@@ -1,3 +1,6 @@
+import sys
+
+sys.path.insert(0, "/Users/mai/Dropbox/Research/spar_dev/SPAR_measure/src/")
 import json
 import os
 from operator import itemgetter
@@ -13,8 +16,8 @@ import torch.nn.functional as F
 from numpy.linalg import inv
 from transformers import AutoModel, AutoTokenizer
 
-from . import util_funcs
-from .zca import ZCA
+from spar_measure import test, util_funcs
+from spar_measure.zca import ZCA
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -913,7 +916,7 @@ def run_gui(
             dim_define_results = gr.Textbox(visible=False, label="")
             dimension_def_file_download = gr.File(visible=False)
 
-        with gr.Tab("3. Define Scales", visible=False):
+        with gr.Tab("3. Define Scales"):
             tab2_warn = gr.Markdown(
                 value="<span style='color:red'>⚠️ Embed Queries and Save Dimensions button in Tab 2 must be clicked before defining scales.</span>",
                 visible=True,
@@ -1012,6 +1015,7 @@ def run_gui(
                 + [dimension_def_file_download] * 2
                 + [tab2_warn],
             )
+
         with gr.Tab("4. Measurement"):
             tab3_warn = gr.Markdown(
                 value="<span style='color:red'>⚠️ Save Scales button in Tab 3 must be clicked before measurement.</span>",
@@ -1079,7 +1083,7 @@ def run_gui(
             + all_scale_neg_selector
             + [n_dim_slider, n_scale_slider],
         )
-    demo.queue(concurrency_count=2)
+    demo.queue()
     if username is None or password is None:
         auth = None
     else:
