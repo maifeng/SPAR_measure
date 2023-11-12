@@ -13,9 +13,13 @@ SPAR is a Python NLP package that facilitates interactive measurement of text us
 **Main features:**
 
 * Enables domain-adaptive and few-shot measurements of theoretical concepts without requiring model training or fine-tuning. 
-* Combines the idea of semantic projection with active semantic search ([Grand et al. 2022](https://www.nature.com/articles/s41562-022-01316-8), Blinded Authors 2023), which allows users to find the most relevant, context-specific documents to define the theoretical scales. 
+* Combines the idea of semantic projection with active semantic search, which allows users to find the most relevant, context-specific documents to define the theoretical scales. 
 * Supports multiple state-of-the-arts text embedding models, such as [Sentence Transformers](https://www.sbert.net/docs/pretrained_models.html) and [OpenAI Text Embeddings API](https://platform.openai.com/docs/guides/embeddings). 
 * Comes with a user-friendly web interface that makes defining theoretical scales and conducting measurements intuitive and accessible. 
+* Reference:
+  * Bei Yan, Feng Mai, Chaojiang Wu, Rui Chen, Xiaolin Li (2023). A Computational Framework for Understanding Firm Communication During Disasters. Information Systems Research.
+https://doi.org/10.1287/isre.2022.0128 
+
 
 If you find SPAR useful in your work, please cite the following paper:
 
@@ -52,4 +56,4 @@ If a CUDA GPU is available, SPAR will use it to speed up embedding. If you choos
 
 
 ## Additional Details
-For additional details and source code, please refer to the project's [GitHub Repository](https://anonymous.4open.science/r/SPAR_measure-BF04/README.MD).
+For additional details and source code, please refer to the project's [GitHub Repository](https://github.com/maifeng/SPAR_measure).

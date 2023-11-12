@@ -1,8 +1,8 @@
-import sys
-
-sys.path.insert(0, "/Users/mai/Dropbox/Research/spar_dev/SPAR_measure/src/")
 import json
 import os
+import sys
+
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 from operator import itemgetter
 from pathlib import Path
 
@@ -18,8 +18,8 @@ from openai import OpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential
 from transformers import AutoModel, AutoTokenizer
 
-from spar_measure import util_funcs
-from spar_measure.zca import ZCA
+from . import util_funcs
+from .zca import ZCA
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
