@@ -10,5 +10,5 @@ fsspec>=2023.3.0
 setuptools>=45.2.0
 torch>=1.8.1
 transformers>=4.20.1
-typing-extensions>=4.8.1
+typing-extensions>=4.8.0
 tenacity>=8.0.1
