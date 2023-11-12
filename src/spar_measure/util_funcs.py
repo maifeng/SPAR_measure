@@ -229,3 +229,8 @@ def mean_pooling(model_output, attention_mask):
     return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(
         input_mask_expanded.sum(1), min=1e-9
     )
+
+
+def print_error(retry_state):
+    if retry_state.outcome.failed:
+        print(f"Error occurred: {retry_state.outcome.exception()}")

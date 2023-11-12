@@ -14,9 +14,11 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 from numpy.linalg import inv
+from openai import OpenAI
+from tenacity import retry, stop_after_attempt, wait_exponential
 from transformers import AutoModel, AutoTokenizer
 
-from spar_measure import test, util_funcs
+from spar_measure import util_funcs
 from spar_measure.zca import ZCA
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -292,26 +294,26 @@ class Meaurement:
             return gr.File(visible=False), gr.Button(visible=True)
 
     @classmethod
-    def embed_texts(cls, sentences, progress, measurement_state):
+    def embed_texts(cls, docs, progress, measurement_state):
         """
-        Embeds a list of sentences using the specified embedding model in the measurement state.
+        Embeds a list of docs using the specified embedding model in the measurement state.
 
         This method takes a list of sentences and embeds them using either Sentence Transformers or OpenAI, based on the configuration in the measurement state. It handles the embedding process in batches for Sentence Transformers and individually for OpenAI.
 
         Args:
-            sentences (list of str): A list of sentences to be embedded.
+            docs (list of str): A list of docs to be embedded.
             progress (tqdm): An instance of the tqdm class for displaying progress.
             measurement_state (dict): A dictionary containing the state and data of the measurement process, including the chosen embedding model and relevant configurations.
 
         Returns:
-            np.ndarray: An array of embedded sentences. The shape of the array depends on the number of sentences and the embedding model used.
+            np.ndarray: An array of embedded docs. The shape of the array depends on the number of docs and the embedding model used.
 
         Raises:
-            AssertionError: If the number of embeddings does not match the number of input sentences when using Sentence Transformers.
+            AssertionError: If the number of embeddings does not match the number of input docs when using Sentence Transformers.
             openai.error.InvalidRequestError: If there is an error in embedding using the OpenAI API, such as invalid API key or request format.
         """
         batch_size = 8
-        sentences = [str(x) for x in sentences]
+        docs = [str(x) for x in docs]
         if measurement_state["use_openAI"] is False:
             # use sentence_transformers to embed the text_col
             print("Embedding Using Sentence Transformers")
@@ -320,9 +322,9 @@ class Meaurement:
                 measurement_state["model"].eval()
                 sentence_embeddings = []
                 for i in progress.tqdm(
-                    range(0, len(sentences), batch_size), unit="batch (batch size=8)"
+                    range(0, len(docs), batch_size), unit="batch (batch size=8)"
                 ):
-                    batch = sentences[i : i + batch_size]
+                    batch = docs[i : i + batch_size]
                     encoded_input = measurement_state["tokenizer"](
                         batch, padding=True, truncation=True, return_tensors="pt"
                     ).to(device)
@@ -338,21 +340,47 @@ class Meaurement:
                 # to cpu and numpy
                 sentence_embeddings = sentence_embeddings.cpu().detach().numpy()
                 print(f"Shape of sentence embeddings: {sentence_embeddings.shape}")
-                assert sentence_embeddings.shape[0] == len(sentences)
+                assert sentence_embeddings.shape[0] == len(docs)
 
         else:
             print("Embedding Using OpenAI")
+
+            @retry(
+                stop=stop_after_attempt(20),
+                wait=wait_exponential(
+                    multiplier=1, min=2, max=60
+                ),  # use exponential backoff with a minimum wait of 4 seconds and a maximum of 10
+                after=util_funcs.print_error,
+            )
+            def call_openai_api(batch, model):
+                client = OpenAI(api_key=measurement_state["openai_api_key"])
+                return client.embeddings.create(input=batch, model=model)
+
+            # Function to divide the docs into batches of 8
+            def divide_into_batches(docs, batch_size):
+                for i in range(0, len(docs), batch_size):
+                    yield docs[i : i + batch_size]
+
+            # Batch the docs
+            sentence_batches = list(divide_into_batches(docs, batch_size=8))
+
+            # List to store all embeddings
             sentence_embeddings = []
-            for sent in progress.tqdm(sentences, unit="docs"):
-                response = openai.Embedding.create(
-                    input=sent,
-                    model="text-embedding-ada-002",
-                    api_key=measurement_state["openai_api_key"],
-                )
-                embeddings = response["data"][0]["embedding"]
-                sentence_embeddings.append(embeddings)
+
+            # Process each batch
+            for batch in progress.tqdm(sentence_batches, unit="batch"):
+                try:
+                    batch_response = call_openai_api(batch, "text-embedding-ada-002")
+                    embeddings = [
+                        response.embedding for response in batch_response.data
+                    ]
+                    sentence_embeddings.extend(embeddings)
+                except openai.error.InvalidRequestError as e:
+                    print(f"An error occurred: {e}")
+                    # Handle the error as needed
+
+            # Convert to numpy array and normalize
             sentence_embeddings = np.array(sentence_embeddings)
-            # normalize embeddings
             sentence_embeddings = sentence_embeddings / np.linalg.norm(
                 sentence_embeddings, axis=1, keepdims=True
             )
@@ -1335,7 +1363,7 @@ def run_gui(
                 + [dimension_def_file_download] * 2
                 + [tab2_warn],
             )
-                
+
         # Tab 4 =========================================================================================================
         with gr.Tab("4. Measurement"):
             tab3_warn = gr.Markdown(
@@ -1404,7 +1432,7 @@ def run_gui(
             + all_scale_neg_selector
             + [n_dim_slider, n_scale_slider],
         )
-    
+
     # launch gradio =========================================================================================================
     demo.queue()
     if username is None or password is None:
