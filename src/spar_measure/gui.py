@@ -58,7 +58,7 @@ class Meaurement:
     def read_csv_cols(self, file_obj, measurement_state):
         if file_obj is not None:
             measurement_state["input_df"] = pd.read_csv(
-                file_obj[0].name, encoding="ISO-8859-1"
+                file_obj.name, encoding="ISO-8859-1"
             )
             measurement_state["col_names"] = measurement_state[
                 "input_df"
@@ -69,7 +69,7 @@ class Meaurement:
         ), gr.Dropdown(choices=measurement_state["col_names"], interactive=True)
 
     def read_input_embedding(self, file_obj, measurement_state):
-        measurement_state["embeddings"] = np.load(file_obj[0].name)
+        measurement_state["embeddings"] = np.load(file_obj.name)
         if measurement_state["embeddings"].shape[0] != len(
             measurement_state["input_df"]
         ):
@@ -237,7 +237,7 @@ class Meaurement:
                         value=f"Embedding completed! \nThe shape of the embeddings is {measurement_state['embeddings'].shape}. You can download and save the embeddings below. Proceed to the next tab to define the dimensions."
                     ),
                     gr.File(visible=True),
-                    Path(self.path_mgt.out_dir, "embeddings.npy"),
+                    str(Path(self.path_mgt.out_dir, "embeddings.npy")),
                 )
         except Exception as e:
             return (
@@ -349,7 +349,7 @@ class Meaurement:
                     )
                 ]
                 + [gr.File(visible=True)]
-                + [Path(self.path_mgt.out_dir, "dimensions_queries.json")]
+                + [str(Path(self.path_mgt.out_dir, "dimensions_queries.json"))]
                 + [gr.Markdown(visible=False)]
             )
         except Exception as e:
@@ -441,7 +441,7 @@ class Meaurement:
                     )
                 ]
                 + [gr.File(visible=True)]
-                + [Path(self.path_mgt.out_dir, "scale_definitions.json")]
+                + [str(Path(self.path_mgt.out_dir, "scale_definitions.json"))]
                 + [gr.Markdown(visible=False)]
             )
         except Exception as e:
@@ -515,7 +515,7 @@ class Meaurement:
                 value="Measurement completed. Download the results below. ",
             ),
             gr.File(visible=True),
-            Path(self.path_mgt.out_dir, "measurement_output.csv"),
+            str(Path(self.path_mgt.out_dir, "measurement_output.csv")),
         )
 
     def load_example_dataset(self, measurement_state):
@@ -571,8 +571,8 @@ class Meaurement:
         return (
             [
                 gr.Row(visible=True),
-                Path(self.path_mgt.sample_data_dir, "sample_text.csv"),
-                Path(self.path_mgt.sample_data_dir, "sample_emb.npy"),
+                str(Path(self.path_mgt.sample_data_dir, "sample_text.csv")),
+                str(Path(self.path_mgt.sample_data_dir, "sample_emb.npy")),
                 gr.Radio(value="Embed Documents"),
                 gr.Textbox(
                     value="""Embedding completed! The shape of the embeddings is (2000, 384). You can download and save the embeddings below. Proceed to the next tab to define the dimensions."""
@@ -656,7 +656,7 @@ def run_gui(
             )
             with gr.Row(variant="panel"):
                 input_file = gr.File(
-                    file_count=1,
+                    file_count="single",
                     file_types=[".csv"],
                     label="Input CSV File",
                 )
@@ -666,11 +666,13 @@ def run_gui(
                     choices="",
                     label="Select Text Column",
                     interactive=False,
+                    allow_custom_value=True,
                 )
                 doc_id_col_selector = gr.Dropdown(
                     choices="",
                     label="Select Document ID Column",
                     interactive=False,
+                    allow_custom_value=True,
                 )
                 doc_id_col_btn = gr.Button(value="Confirm Column Selections")
                 doc_id_col_btn.click(
@@ -694,6 +696,7 @@ def run_gui(
                     label="Select an embedding method:",
                     interactive=True,
                     value="Sentence Transformers (Local)",
+                    allow_custom_value=True,
                     multiselect=False,
                 )
                 openai_api_key = gr.Textbox(
@@ -734,7 +737,7 @@ def run_gui(
 
                 embed_btn = gr.Button("Embed Documents", visible=False)
                 input_embedding_uploader = gr.File(
-                    file_count=1,
+                    file_count="single",
                     file_types=[".npz", ".npy"],
                     label="Precomputed Embeddings",
                     visible=False,
@@ -981,6 +984,7 @@ def run_gui(
                                 label=f"Positive Dimensions for Scale {i + 1} (Required)",
                                 value=None,
                                 visible=True,
+                                allow_custom_value=True,
                             )
                         )
                     with gr.Column(scale=4):
@@ -991,6 +995,7 @@ def run_gui(
                                 label=f"Negative Dimensions for Scale {i + 1} (Optional)",
                                 value=None,
                                 visible=True,
+                                allow_custom_value=True,
                             )
                         )
             n_scale_slider.change(
