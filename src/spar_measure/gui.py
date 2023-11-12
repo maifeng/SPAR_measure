@@ -23,6 +23,19 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 class CVFDemo:
+    """
+    Demonstrates the Competing Values Frameworks (CVF) measurement using predefined dimensions and scales.
+
+    This class is used as an example in the accompanying paper, showcasing the application of CVF in measuring theoretical concepts.
+
+    Attributes:
+        dim_names (list of str): Names of the dimensions used in the CVF model. Example dimensions include 'Create', 'Collaborate', 'Control', and 'Compete'.
+        dim_seeds (list of str): Seed sentences for each dimension that define the theoretical concepts. These sentences are used as a starting point for semantic measurement.
+        scales (dict): A dictionary defining the scales based on the dimensions. Each scale is a combination of positive and negative aspects of selected dimensions.
+
+    Example scales include 'External-Internal' with positive aspects as 'Create' and 'Compete', and negative aspects as 'Control' and 'Collaborate'; 'Flexible-Stable' with positive aspects as 'Collaborate' and 'Create', and negative aspects as 'Control' and 'Compete'.
+    """
+
     # example values used in the paper
     dim_names = ["Create", "Collaborate", "Control", "Compete"]
     dim_seeds = [
@@ -44,6 +57,21 @@ class CVFDemo:
 
 
 class PathManager:
+    """
+    Manages file paths for the project, including output and sample data directories.
+
+    Attributes:
+        out_dir (str): Path to the directory where output files will be stored.
+        root_dir (str): Path to the root directory of the project.
+        sample_data_dir (Path): Path to the directory containing sample data.
+
+    Args:
+        out_dir (str): Path to the output directory where files will be saved.
+
+    Raises:
+        OSError: If there are issues in determining the root directory or accessing the sample data directory.
+    """
+
     def __init__(self, out_dir):
         self.out_dir = out_dir
         self.root_dir = os.path.dirname(os.path.abspath(__file__))
@@ -56,6 +84,18 @@ class Meaurement:
         self.path_mgt = path_mgt
 
     def read_csv_cols(self, file_obj, measurement_state):
+        """
+        Reads the columns from a CSV file and updates the measurement state with these columns.
+
+        This method loads a CSV file into a DataFrame and extracts its column names. It then returns two interactive Gradio dropdown components for selecting columns from the loaded DataFrame.
+
+        Args:
+            file_obj (file object): The file object of the CSV file to be read.
+            measurement_state (dict): A dictionary to store and update the state and data of the measurement process, including the loaded DataFrame and its column names.
+
+        Returns:
+            tuple: A pair of Gradio dropdown components for selecting columns from the loaded DataFrame. The first dropdown is for selecting the main column of interest, and the second is for additional selection, both populated with the column names from the CSV file.
+        """
         if file_obj is not None:
             measurement_state["input_df"] = pd.read_csv(
                 file_obj.name, encoding="ISO-8859-1"
@@ -69,6 +109,18 @@ class Meaurement:
         ), gr.Dropdown(choices=measurement_state["col_names"], interactive=True)
 
     def read_input_embedding(self, file_obj, measurement_state):
+        """
+        Reads and validates the input embedding matrix from a file, updating the measurement state.
+
+        This method loads a NumPy array from the specified file and checks if the number of rows in the embedding matrix matches the number of rows in the input data. It provides feedback through a Gradio textbox and an invisible Gradio button.
+
+        Args:
+            file_obj (file object): The file object representing the .npy file containing precomputed embeddings.
+            measurement_state (dict): A dictionary used to store the state and data of the measurement process, including the embeddings and input DataFrame.
+
+        Returns:
+            tuple: A Gradio textbox with a message indicating the status of the embedding upload, and a Gradio button that is not visible.
+        """
         measurement_state["embeddings"] = np.load(file_obj.name)
         if measurement_state["embeddings"].shape[0] != len(
             measurement_state["input_df"]
@@ -79,6 +131,19 @@ class Meaurement:
         return gr.Textbox(value=msg), gr.Button(visible=False)
 
     def set_doc_col(self, doc_col_name, doc_id_col_name, measurement_state):
+        """
+        Sets the document and document ID column names in the measurement state.
+
+        This method configures the measurement state with the specified document and document ID column names, ensuring that these columns exist in the input DataFrame. It returns a Gradio textbox to indicate the successful setting of column names.
+
+        Args:
+            doc_col_name (str): The name of the column in the input DataFrame containing the document text.
+            doc_id_col_name (str): The name of the column in the input DataFrame containing the document IDs.
+            measurement_state (dict): A dictionary used to store and update the state and data of the measurement process, including the names of the document and document ID columns.
+
+        Returns:
+            gr.Textbox: A Gradio textbox indicating that the column names have been successfully set in the measurement state.
+        """
         print(f"Setting doc_col_name to {doc_col_name}")
         if measurement_state["input_df"].columns.tolist() is not None:
             if doc_col_name in measurement_state["input_df"].columns.tolist():
@@ -91,6 +156,18 @@ class Meaurement:
         return gr.Textbox(value="Column names set!")
 
     def set_sbert(self, model_name, measurement_state):
+        """
+        Configures the Sentence-BERT (SBERT) model for text embedding.
+
+        This method sets up the SBERT model specified by the model_name. It updates the measurement state with the model name, tokenizer, and the pre-trained model itself. The model is set to evaluation mode and moved to the appropriate computing device.
+
+        Args:
+            model_name (str): The name of the pre-trained Sentence-BERT model to be used.
+            measurement_state (dict): A dictionary used to store the state and data of the measurement process, including the SBERT model and tokenizer.
+
+        Returns:
+            None: This method does not return anything but updates the measurement_state with the SBERT model and tokenizer.
+        """
         print(f"Setting SBERT model to {model_name}")
         measurement_state["model_name"] = model_name
         measurement_state["tokenizer"] = AutoTokenizer.from_pretrained(
@@ -103,6 +180,18 @@ class Meaurement:
         measurement_state["model"].to(device)
 
     def set_openai_api_key(self, api_key, measurement_state):
+        """
+        Sets the OpenAI API key in the measurement state for accessing OpenAI services.
+
+        This method attempts to set the OpenAI API key either from the provided api_key argument or from the environment variable 'OPENAI_API_KEY'. If successful, it updates the measurement_state with the API key; otherwise, it returns a Gradio textbox indicating an error.
+
+        Args:
+            api_key (str): The OpenAI API key provided by the user. If empty, the method will attempt to use the API key from the environment variable.
+            measurement_state (dict): A dictionary used to store the state and data of the measurement process, including the OpenAI API key.
+
+        Returns:
+            gr.Textbox (optional): A Gradio textbox that is visible only if there is an error in setting the API key, displaying an appropriate error message.
+        """
         print("Setting OpenAI API key")
         if api_key != "":
             try:
@@ -123,10 +212,20 @@ class Meaurement:
                     visible=True,
                 )
 
-    def toggle_embedding_model_visibility(
-        self,
-        embedding_model_dropdown,
-    ):
+    def toggle_embedding_model_visibility(self, embedding_model_dropdown):
+        """
+        Toggles the visibility of different embedding model options based on the selected embedding model.
+
+        This method adjusts the visibility of Gradio components (textboxes and a button) based on whether the user selects a 'Sentence Transformers' model or an 'OpenAI' model in the dropdown.
+        Args:
+            embedding_model_dropdown (str): The current value of the embedding model dropdown, indicating the selected embedding model type.
+
+        Returns:
+            tuple: A tuple of three Gradio components:
+                - A Gradio textbox for Sentence Transformers, visible if a Sentence Transformers model is selected.
+                - A Gradio textbox for OpenAI, visible if an OpenAI model is selected.
+                - A Gradio button to set the embedding model.
+        """
         if embedding_model_dropdown.startswith("Sentence Transformers"):
             return (
                 gr.Textbox(visible=True),
@@ -147,6 +246,20 @@ class Meaurement:
         openai_api_key,
         measurement_state,
     ):
+        """
+        Sets the embedding model in the measurement state based on the user's selection.
+
+        This method configures the measurement state with the selected embedding model, either a Sentence Transformers model or using the OpenAI API. It also updates the measurement state to indicate which embedding service is in use.
+
+        Args:
+            embedding_model_dropdown (str): The selected embedding model type from the dropdown.
+            sbert_model_textbox (str): The name of the Sentence-BERT model to be used, applicable if Sentence Transformers is selected.
+            openai_api_key (str): The OpenAI API key, applicable if OpenAI is selected.
+            measurement_state (dict): A dictionary used to store the state and data of the measurement process.
+
+        Returns:
+            gr.Button: A Gradio button indicating that the embedding model has been set.
+        """
         print(f"Setting embedding model to {embedding_model_dropdown}")
         if embedding_model_dropdown.startswith("Sentence Transformers"):
             self.set_sbert(sbert_model_textbox, measurement_state)
@@ -160,6 +273,19 @@ class Meaurement:
         return gr.Button(value="Set Embedding Model")
 
     def set_embedding_option(self, embedding_option):
+        """
+        Adjusts the visibility of Gradio interface components based on the selected embedding option.
+
+        This method dynamically updates the user interface to show relevant components for either uploading precomputed embeddings or embedding documents within the app. It returns a Gradio file input and a Gradio button with adjusted visibility.
+
+        Args:
+            embedding_option (str): The selected option for handling embeddings, either 'Upload Precomputed Embeddings' or 'Embed Documents'.
+
+        Returns:
+            tuple: A pair of Gradio components:
+                - A Gradio file input, visible for uploading precomputed embeddings and hidden for embedding documents within the app.
+                - A Gradio button, hidden for uploading precomputed embeddings and visible for embedding documents within the app.
+        """
         if embedding_option == "Upload Precomputed Embeddings":
             return gr.File(visible=True), gr.Button(visible=False)
         if embedding_option == "Embed Documents":
@@ -167,7 +293,23 @@ class Meaurement:
 
     @classmethod
     def embed_texts(cls, sentences, progress, measurement_state):
-        """Use huggingface transformers to embed the text_col"""
+        """
+        Embeds a list of sentences using the specified embedding model in the measurement state.
+
+        This method takes a list of sentences and embeds them using either Sentence Transformers or OpenAI, based on the configuration in the measurement state. It handles the embedding process in batches for Sentence Transformers and individually for OpenAI.
+
+        Args:
+            sentences (list of str): A list of sentences to be embedded.
+            progress (tqdm): An instance of the tqdm class for displaying progress.
+            measurement_state (dict): A dictionary containing the state and data of the measurement process, including the chosen embedding model and relevant configurations.
+
+        Returns:
+            np.ndarray: An array of embedded sentences. The shape of the array depends on the number of sentences and the embedding model used.
+
+        Raises:
+            AssertionError: If the number of embeddings does not match the number of input sentences when using Sentence Transformers.
+            openai.error.InvalidRequestError: If there is an error in embedding using the OpenAI API, such as invalid API key or request format.
+        """
         batch_size = 8
         sentences = [str(x) for x in sentences]
         if measurement_state["use_openAI"] is False:
@@ -219,6 +361,24 @@ class Meaurement:
         return sentence_embeddings
 
     def embed_df(self, measurement_state, progress=gr.Progress()):
+        """
+        Embeds the documents from the input DataFrame and saves the embeddings to a file.
+
+        This method embeds the text from a specified column in the input DataFrame using the configured embedding model. It saves the embeddings as a .npy file and provides Gradio components for displaying the embedding status and downloading the embeddings.
+
+        Args:
+            measurement_state (dict): A dictionary containing the state and data of the measurement process, including the input DataFrame and the name of the column to be embedded.
+            progress (gr.Progress, optional): A Gradio progress component for tracking the embedding process.
+
+        Returns:
+            tuple: A tuple containing:
+                - A Gradio textbox with a message indicating the status of the embedding process.
+                - A Gradio file component for downloading the embeddings file.
+                - A string representing the file path of the saved embeddings.
+
+        Raises:
+            Exception: If there is an error during the embedding process, with an error message included in the Gradio textbox.
+        """
         try:
             measurement_state["embeddings"] = self.embed_texts(
                 measurement_state["input_df"][measurement_state["doc_col_name"]],
@@ -249,6 +409,21 @@ class Meaurement:
             )
 
     def toggle_row_vis(self, n_rows, measurement_state):
+        """
+        Toggles the visibility of rows in the Gradio interface based on the number of dimensions specified.
+
+        This method dynamically updates the visibility of rows in the Gradio interface on the dimensions tab. It sets the number of visible rows according to the specified number of dimensions and updates the measurement state accordingly.
+
+        Args:
+            n_rows (int): The number of rows (dimensions) to be made visible in the Gradio interface.
+            measurement_state (dict): A dictionary used to store the state and data of the measurement process, including the number of dimensions.
+
+        Returns:
+            list of gr.Row: A list of Gradio Row objects with updated visibility. The first n_rows are set to visible, and the rest are set to invisible.
+
+        Raises:
+            ValueError: If n_rows is not an integer or is outside the acceptable range (e.g., negative numbers or numbers larger than the total number of available rows).
+        """
         # toggle visbility of rows (dimensions tab)
         update_rows = []
         measurement_state["n_dims"] = n_rows
@@ -260,6 +435,21 @@ class Meaurement:
         return update_rows
 
     def toggle_row_vis_scales(self, n_rows, measurement_state):
+        """
+        Adjusts the visibility of rows in the Gradio interface on the scales tab based on the specified number of scales.
+
+        This method updates the number of visible rows in the Gradio interface on the scales tab according to the number of scales defined by the user. It alters the measurement state to reflect the new number of scales.
+
+        Args:
+            n_rows (int): The number of rows (scales) to be made visible on the scales tab.
+            measurement_state (dict): A dictionary used to store the state and data of the measurement process, including the number of scales.
+
+        Returns:
+            list of gr.Row: A list of Gradio Row objects with visibility updated according to the specified number of scales. Rows corresponding to the defined number of scales are made visible, while the rest are hidden.
+
+        Raises:
+            ValueError: If n_rows is not a valid integer or if it exceeds the predefined maximum number of rows.
+        """
         # toggle visbility of rows (scales tab)
         update_rows = []
         measurement_state["n_scales"] = n_rows
@@ -273,7 +463,25 @@ class Meaurement:
     def semantic_search(
         self, query, n_results, measurement_state, progress=gr.Progress()
     ):
-        # search for the most similar documents
+        """
+        Performs semantic search to find the most similar documents to the provided query.
+
+        This method takes a query, splits it into individual lines, and uses the configured embedding model to embed each line, take the average embedding, and find the most similar documents in the input data. The results are displayed in a Gradio textbox, showing the document IDs, scores, and excerpts of the top matches.
+
+        Args:
+            query (str): A string containing one or more queries, separated by new lines.
+            n_results (int): The number of top results to return from the semantic search.
+            measurement_state (dict): A dictionary containing the state and data of the measurement process, including the document embeddings.
+            progress (gr.Progress, optional): A Gradio progress component for tracking the embedding process of the query.
+
+        Returns:
+            gr.Textbox: A Gradio textbox containing the results of the semantic search, including document IDs, similarity scores, and excerpts.
+
+        Raises:
+            ValueError: If the query is empty or invalid.
+            AssertionError: If there is a mismatch in the length of the lists of document IDs, scores, and excerpts in the search results.
+            Exception: If there is an error during the embedding or search process, with the error message included in the Gradio textbox.
+        """
         result_str = ""
         queries = query.split("\n")
         # remove empty queries or queries with only spaces
@@ -315,6 +523,22 @@ class Meaurement:
         return gr.Textbox(value=result_str)
 
     def save_dims(self, measurement_state, progress=gr.Progress(), *dims_boxes):
+        """
+        Saves the embeddings and queries for user-defined dimensions, updating the measurement state.
+
+        This method processes user-input dimensions, embeds their queries, and stores the embeddings and queries in the measurement state. It also saves the dimension queries as a JSON file and returns Gradio components to reflect the saved dimensions and allow for the download of the JSON file.
+
+        Args:
+            measurement_state (dict): A dictionary containing the state and data of the measurement process.
+            progress (gr.Progress, optional): A Gradio progress component for tracking the embedding process of the dimension queries.
+            *dims_boxes (str): Variable length argument list containing dimension names and queries.
+
+        Returns:
+            list: A list containing Gradio components. It includes Dropdown components for scale selection, a Textbox with a message about the saved dimensions, a File component for downloading the dimension queries, and a string representing the file path of the JSON file.
+
+        Raises:
+            Exception: If there is an error during processing or saving the dimensions, with the error message included in the Gradio textbox.
+        """
         try:
             # first half of dims_boxes are dim names, second half are dim queries
             all_dim_names = dims_boxes[: len(dims_boxes) // 2]
@@ -368,8 +592,23 @@ class Meaurement:
             )
 
     def save_scales(self, measurement_state, *scale_boxes):
-        # first 1/3 of scales boxes are names, second 1/3 are positive scales, third 1/3 are negative scales
+        """
+        Saves the embeddings and definitions for user-defined scales, updating the measurement state.
+
+        This method processes user-input scales, computes their embeddings by averaging the embeddings of the positive and negative dimensions, and stores the scale embeddings and definitions in the measurement state. It also saves the scale definitions as a JSON file and returns Gradio components to reflect the saved scales and allow for the download of the JSON file.
+
+        Args:
+            measurement_state (dict): A dictionary containing the state and data of the measurement process.
+            *scale_boxes (str): Variable length argument list containing scale names, positive dimensions, and negative dimensions.
+
+        Returns:
+            list: A list containing Gradio components. It includes a Textbox with a message about the saved scales, a File component for downloading the scale definitions, and a string representing the file path of the JSON file.
+
+        Raises:
+            Exception: If there is an error during processing or saving the scales, with the error message included in the Gradio textbox. This includes cases where scale names or dimensions are missing or improperly defined.
+        """
         try:
+            # first 1/3 of scales boxes are names, second 1/3 are positive scales, third 1/3 are negative scales
             all_scale_names = scale_boxes[: len(scale_boxes) // 3]
             all_pos_scales = scale_boxes[
                 len(scale_boxes) // 3 : 2 * len(scale_boxes) // 3
@@ -459,6 +698,27 @@ class Meaurement:
             )
 
     def measure_docs(self, single_subspace: str, whitening: str, measurement_state):
+        """
+        Measures documents against defined scales and outputs the results as a CSV file.
+
+        This method computes the similarity of document embeddings to scale embeddings using the dot product or a subspace projection method. Optionally, it applies whitening transformation to the measures. The results are saved as a CSV file, and Gradio components are returned for displaying the completion message and downloading the results.
+
+        Args:
+            single_subspace (str): A flag indicating whether to use a general subspace projection that treats all scales a single subspace (think of it as measuring one scale while controlling for other scales). Expected values are "Yes" or "No".
+            whitening (str): A flag indicating whether to apply whitening transformation to the measures. Expected values are "Yes" or "No".
+            measurement_state (dict): A dictionary containing the state and data of the measurement process, including document and scale embeddings.
+
+        Returns:
+            tuple: A tuple containing:
+                - A Gradio textbox with a message indicating the completion of the measurement process.
+                - A Gradio file component for downloading the measurement results.
+                - A string representing the file path of the saved measurement results.
+
+        Raises:
+            ValueError: If the values for single_subspace or whitening are not recognized.
+            FileNotFoundError: If there is an error in saving the measurement results to a CSV file.
+            numpy.linalg.LinAlgError: If there is an error in matrix inversion during subspace projection.
+        """
         print(
             f"Measuring with the following arguments: single_subspace={single_subspace}, whitening={whitening}."
         )
@@ -519,6 +779,22 @@ class Meaurement:
         )
 
     def load_example_dataset(self, measurement_state):
+        """
+        Loads an example dataset and updates the measurement state with predefined settings.
+
+        This method reads a sample text dataset and its precomputed embeddings, sets the Sentence-BERT model and document-related column names, and updates Gradio interface components to reflect predefined dimensions and scales from the CVFDemo class.
+
+        Args:
+            measurement_state (dict): A dictionary to store the state and data of the measurement process, including the loaded example dataset and embeddings.
+
+        Returns:
+            list: A list of Gradio components configured with example dataset settings. It includes components for dataset and embedding information, document column selection, embedding model selection, dimension names and seeds, scale names and selectors, and sliders for dimensions and scales.
+
+        Raises:
+            FileNotFoundError: If the sample text CSV file or the precomputed embeddings file cannot be found.
+            pd.errors.ParserError: If there is an error in parsing the sample text CSV file.
+            numpy.lib.npyio.NpyFileError: If there is an error in loading the precomputed embeddings file.
+        """
         # tab 1
         measurement_state["input_df"] = pd.read_csv(
             Path(self.path_mgt.sample_data_dir, "sample_text.csv")
@@ -592,18 +868,36 @@ class Meaurement:
 
 
 def run_gui(
-    out_dir="measure_output/",
-    mode="local",
-    username=None,
-    password=None,
-    **kwargs,
+    out_dir="measure_output/", mode="local", username=None, password=None, **kwargs
 ):
+    """
+    Launches the SPAR Gradio web interface for semantic text measurement.
+
+    This function sets up and runs the Gradio Blocks interface for SPAR, providing tabs for data upload and embedding, dimension and scale definition, and document measurement. It supports both local and public modes, with optional authentication.
+
+    Args:
+        out_dir (str, optional): The directory where output files will be saved. Defaults to 'measure_output/'.
+        mode (str, optional): The mode of the Gradio interface, either 'local' for running on a local machine or 'public' for public web access. Defaults to 'local'.
+        username (str, optional): The username for authentication if running in public mode. No authentication is required if None. Defaults to None.
+        password (str, optional): The password for authentication if running in public mode. No authentication is required if None. Defaults to None.
+        **kwargs: Additional keyword arguments passed to the Gradio launch function.
+
+    Returns:
+        None: This function does not return a value but launches the Gradio web interface.
+
+    Raises:
+        ValueError: If the mode is not 'local' or 'public'.
+        OSError: If there are issues in creating the output directory or setting the file paths.
+        RuntimeError: If there are issues in initializing or running the Gradio interface.
+    """
+
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     path_mgt = PathManager(out_dir=out_dir)
 
     torch.set_grad_enabled(False)  # disable autograd
 
     with gr.Blocks(title="SPAR") as demo:
+        # set up inital measurement state ========================================================
         m = Meaurement(path_mgt=path_mgt)
         state = gr.State({})
         gr.Markdown(
@@ -618,13 +912,16 @@ def run_gui(
         all_scale_name_boxes = []
         all_scale_pos_selector = []
         all_scale_neg_selector = []
+        # Basic Info ==================================================================================
         with gr.Row():
             with gr.Column(scale=1):
                 example_btn = gr.Button(value="💡 Load Example Dataset and Scales")
             with gr.Column(scale=8):
                 gr.Markdown(
                     value="""* SPAR is a Python package and a web interface for measuring short text documents using semantic projection.
-                    * The package is part of the manuscript ISR-2022-128 (under review). It is still considered a research prototype and under active development. 
+                    * The package is developed as part of the paper:
+                        __Bei Yan, Feng Mai, Chaojiang Wu, Rui Chen, Xiaolin Li (2023). A Computational Framework for Understanding Firm Communication During Disasters. Information Systems Research. https://doi.org/10.1287/isre.2022.0128__  
+                        It is a research prototype and under active development. Please contact the authors for any questions or feedback.
                     * The source code is available on [GitHub](https://github.com/maifeng/SPAR_measure) under GPLv3 license.""",
                     label="",
                 )
@@ -647,7 +944,7 @@ def run_gui(
                 example_emb_download = gr.File(
                     visible=True, label="Download Example Embeddings"
                 )
-
+        # Tab 1 =========================================================================================================
         with gr.Tab("1. Upload File and Embed"):
             # read csv file and select columns
             gr.Markdown(
@@ -793,6 +1090,8 @@ def run_gui(
                 outputs=[emb_result_txtbox, emb_results_file, emb_results_file],
                 api_name=False,
             )
+
+        # Tab 2 =========================================================================================================
         with gr.Tab("2. Define Dimensions and Semantic Search"):
             gr.Markdown(
                 value=" 📖 Move the sliders to set the number of dimensions and the number of results in each round of semantic search. Make sure that there is no empty dimension. ",
@@ -921,6 +1220,7 @@ def run_gui(
             dim_define_results = gr.Textbox(visible=False, label="")
             dimension_def_file_download = gr.File(visible=False)
 
+        # Tab 3 =========================================================================================================
         with gr.Tab("3. Define Scales"):
             tab2_warn = gr.Markdown(
                 value="<span style='color:red'>⚠️ Embed Queries and Save Dimensions button in Tab 2 must be clicked before defining scales.</span>",
@@ -1035,7 +1335,8 @@ def run_gui(
                 + [dimension_def_file_download] * 2
                 + [tab2_warn],
             )
-
+                
+        # Tab 4 =========================================================================================================
         with gr.Tab("4. Measurement"):
             tab3_warn = gr.Markdown(
                 value="<span style='color:red'>⚠️ Save Scales button in Tab 3 must be clicked before measurement.</span>",
@@ -1103,6 +1404,8 @@ def run_gui(
             + all_scale_neg_selector
             + [n_dim_slider, n_scale_slider],
         )
+    
+    # launch gradio =========================================================================================================
     demo.queue()
     if username is None or password is None:
         auth = None
