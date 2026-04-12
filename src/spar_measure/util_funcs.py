@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import datetime
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 import pandas as pd

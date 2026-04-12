@@ -81,7 +81,7 @@ class PathManager:
         print(self.sample_data_dir)
 
 
-class Meaurement:
+class Measurement:
     def __init__(self, path_mgt):
         self.path_mgt = path_mgt
 
@@ -375,12 +375,23 @@ class Meaurement:
                         response.embedding for response in batch_response.data
                     ]
                     sentence_embeddings.extend(embeddings)
-                except openai.error.InvalidRequestError as e:
-                    print(f"An error occurred: {e}")
-                    # Handle the error as needed
+                except (
+                    openai.BadRequestError,
+                    openai.APIError,
+                    openai.RateLimitError,
+                ) as e:
+                    # Surface the failure instead of silently dropping the batch;
+                    # dropping causes a row-count mismatch with input_df downstream.
+                    raise RuntimeError(
+                        f"OpenAI embedding failed for batch of size {len(batch)}: {e}"
+                    ) from e
 
             # Convert to numpy array and normalize
             sentence_embeddings = np.array(sentence_embeddings)
+            assert sentence_embeddings.shape[0] == len(docs), (
+                f"OpenAI embedding row count mismatch: expected {len(docs)}, "
+                f"got {sentence_embeddings.shape[0]}"
+            )
             sentence_embeddings = sentence_embeddings / np.linalg.norm(
                 sentence_embeddings, axis=1, keepdims=True
             )
@@ -792,8 +803,7 @@ class Meaurement:
             [measurement_state["doc_id_col_name"]]
             + list(measurement_state["scale_definitions"].keys())
         ]
-        Path("measure_output").mkdir(parents=True, exist_ok=True)
-        Path(self.path_mgt.out_dir, "measurement_output.csv")
+        Path(self.path_mgt.out_dir).mkdir(parents=True, exist_ok=True)
         scale_measures.to_csv(
             Path(self.path_mgt.out_dir, "measurement_output.csv"), index=False
         )
@@ -919,6 +929,22 @@ def run_gui(
         RuntimeError: If there are issues in initializing or running the Gradio interface.
     """
 
+    # Filter kwargs to only those gradio.Blocks.launch accepts. Prevents
+    # `python -m spar_measure.gui --help` from forwarding `help=True` into
+    # demo.launch() and crashing with TypeError. See H-05 in 05_SPAR_code_review.md.
+    _LAUNCH_ALLOWED = {
+        "share", "auth", "server_name", "server_port", "favicon_path",
+        "ssl_keyfile", "ssl_certfile", "ssl_verify", "inbrowser", "quiet",
+        "debug", "height", "width", "root_path", "show_api", "max_threads",
+        "show_error", "allowed_paths", "blocked_paths",
+    }
+    ignored = sorted(set(kwargs) - _LAUNCH_ALLOWED)
+    if ignored:
+        print(
+            f"[spar_measure] Ignoring unknown CLI flags not accepted by gradio.launch: {ignored}"
+        )
+    kwargs = {k: v for k, v in kwargs.items() if k in _LAUNCH_ALLOWED}
+
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     path_mgt = PathManager(out_dir=out_dir)
 
@@ -926,7 +952,7 @@ def run_gui(
 
     with gr.Blocks(title="SPAR") as demo:
         # set up inital measurement state ========================================================
-        m = Meaurement(path_mgt=path_mgt)
+        m = Measurement(path_mgt=path_mgt)
         state = gr.State({})
         gr.Markdown(
             "### SPAR: Semantic Projection with Active Retrieval (Research Preview)"
@@ -1454,6 +1480,10 @@ def run_gui(
         )
     else:
         print("Invalid mode. Please choose from 'public' or 'local'.")
+
+
+# Backwards-compat alias for the old misspelled class name.
+Meaurement = Measurement
 
 
 if __name__ == "__main__":
