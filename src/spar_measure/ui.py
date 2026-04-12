@@ -809,25 +809,25 @@ def build_blocks(path_mgt: PathManager) -> tuple[gr.Blocks, Measurement]:
                 fn=m.set_embedding_option,
                 inputs=upload_emb_choice,
                 outputs=[input_embedding_uploader, embed_btn],
-                api_name=False,
+                api_visibility="private",
             )
             input_file.change(
                 fn=m.read_csv_cols,
                 inputs=[input_file, state],
                 outputs=[doc_col_selector, doc_id_col_selector],
-                api_name=False,
+                api_visibility="private",
             )
             input_embedding_uploader.change(
                 fn=m.read_input_embedding,
                 inputs=[input_embedding_uploader, state],
                 outputs=[emb_result_txtbox, embed_btn],
-                api_name=False,
+                api_visibility="private",
             )
             embedding_model_dropdown.change(
                 fn=m.toggle_embedding_model_visibility,
                 inputs=[embedding_model_dropdown],
                 outputs=[sbert_model_textbox, openai_api_key, set_emb_btn],
-                api_name=False,
+                api_visibility="private",
             )
             sbert_model_textbox.change(
                 fn=m.reset_set_emb_btn, outputs=[set_emb_btn]
@@ -836,13 +836,13 @@ def build_blocks(path_mgt: PathManager) -> tuple[gr.Blocks, Measurement]:
                 fn=m.set_openai_api_key,
                 inputs=[openai_api_key, state],
                 outputs=[emb_result_txtbox],
-                api_name=False,
+                api_visibility="private",
             )
             embed_btn.click(
                 fn=m.embed_df,
                 inputs=state,
                 outputs=[emb_result_txtbox, emb_results_file, emb_results_file],
-                api_name=False,
+                api_visibility="private",
             )
 
         # Tab 2 -------------------------------------------------------------
@@ -948,21 +948,21 @@ def build_blocks(path_mgt: PathManager) -> tuple[gr.Blocks, Measurement]:
                 fn=m.toggle_row_vis,
                 inputs=[n_dim_slider, state],
                 outputs=all_rows_dims,
-                api_name=False,
+                api_visibility="private",
             )
             for box in all_search_query_boxes:
                 box.change(
                     fn=m.toggle_row_vis,
                     inputs=[n_dim_slider, state],
                     outputs=[],
-                    api_name=False,
+                    api_visibility="private",
                 )
             for dim_i, btn in enumerate(all_search_btns):
                 btn.click(
                     fn=m.semantic_search,
                     inputs=[all_search_query_boxes[dim_i], n_results_slider, state],
                     outputs=all_search_results[dim_i],
-                    api_name=False,
+                    api_visibility="private",
                 )
             gr.Markdown(
                 value=(
@@ -1060,14 +1060,14 @@ def build_blocks(path_mgt: PathManager) -> tuple[gr.Blocks, Measurement]:
                 fn=m.toggle_row_vis_scales,
                 inputs=[n_scale_slider, state],
                 outputs=all_rows_scale,
-                api_name=False,
+                api_visibility="private",
             )
             for box in all_scale_name_boxes + all_scale_pos_selector + all_scale_neg_selector:
                 box.change(
                     fn=m.toggle_row_vis_scales,
                     inputs=[n_scale_slider, state],
                     outputs=[],
-                    api_name=False,
+                    api_visibility="private",
                 )
             save_scale_button = gr.Button("Save Scales")
             scale_define_results = gr.Textbox(visible=False, label="")
