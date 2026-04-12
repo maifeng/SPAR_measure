@@ -40,7 +40,6 @@ def test_gradio_launch_serves_config(tmp_path: Path) -> None:
         server_port=port,
         prevent_thread_lock=True,
         quiet=True,
-        show_api=False,
     )
     try:
         # Wait briefly for uvicorn to bind.
@@ -54,7 +53,7 @@ def test_gradio_launch_serves_config(tmp_path: Path) -> None:
         else:
             pytest.fail("Gradio /config endpoint never responded")
 
-        assert '"mode":"blocks"' in body
-        assert '"version":"3.50.2"' in body or '"version"' in body
+        # Gradio 6 /config returns JSON with "version" present
+        assert '"version"' in body
     finally:
         demo.close()

@@ -1183,7 +1183,6 @@ _LAUNCH_ALLOWED: frozenset[str] = frozenset(
         "height",
         "width",
         "root_path",
-        "show_api",
         "max_threads",
         "show_error",
         "allowed_paths",
