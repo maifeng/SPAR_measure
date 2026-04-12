@@ -11,7 +11,9 @@
 
 - [Overview](#overview)
 - [Installation and Quick Start](#installation-and-quick-start)
+- [Headless Python API](#headless-python-api)
 - [Interface and Usage](#interface-and-usage)
+- [Road Map](ROADMAP.MD)
 - [Limitations](#limitations)
 - [License](#license)
 
@@ -60,7 +62,66 @@ If a CUDA GPU is available, SPAR will use it to speed up embedding. If you choos
 
     CUDA_VISIBLE_DEVICES="" python -m spar_measure.gui
 
-See full documentation for other usage options [here](resources/Manual.MD). 
+See full documentation for other usage options [here](resources/Manual.MD).
+
+## Headless Python API
+
+For Colab and batch scripts, the `spar_measure.score(...)` function runs the
+full pipeline without a browser. It accepts a pandas DataFrame and a scale
+spec, and returns a DataFrame with one column per scale.
+
+```python
+import pandas as pd
+from spar_measure import score
+
+docs = pd.DataFrame({
+    "doc_id": [0, 1, 2],
+    "text": [
+        "We encourage new ways of thinking.",
+        "Safety first in every department.",
+        "Working together to weather the storm.",
+    ],
+})
+
+scales = {
+    "dimensions": {
+        "Creative": {"queries": ["We should adapt and innovate."]},
+        "Safe":     {"queries": ["Safety is our top priority."]},
+        "Danger":   {"queries": ["This is dangerous."]},
+    },
+    "scales": {
+        "Creativity": {"pos_dims": ["Creative"], "neg_dims": []},
+        "Safety":     {"pos_dims": ["Safe"],     "neg_dims": ["Danger"]},
+    },
+}
+
+# Sentence-BERT (default, local, CPU/GPU). Returns (n_docs, 1 + n_scales).
+out = score(docs, scales, text_col="text", id_col="doc_id")
+
+# Or use the OpenAI Embeddings API:
+out = score(
+    docs, scales,
+    text_col="text", id_col="doc_id",
+    openai_api_key="sk-...",
+    # optional: openai_embedding_model="text-embedding-3-large",
+)
+
+# Or reuse a precomputed embeddings matrix (skips the embed step):
+import numpy as np
+emb = np.load("embeddings.npy")
+out = score(docs, scales, text_col="text", id_col="doc_id",
+            precomputed_embeddings=emb)
+```
+
+There is also a headless CLI for one-off scoring:
+
+```bash
+python -m spar_measure measure \
+    --docs=corpus.csv \
+    --scales=scales.json \
+    --out=scored.csv \
+    --id_col=doc_id
+```
 
 ## Interface and Usage
 
