@@ -588,19 +588,27 @@ class Measurement:
         scale_pos_updates: list[Any] = []
         scale_neg_updates: list[Any] = []
         demo_scale_names = list(CVFDemo.scales.keys())
+        # Scale name outputs are Textbox; positive/negative selectors are Dropdown
+        # (multiselect). Gradio 5/6 is stricter about component-type matching
+        # between the update object and the bound output component, so build
+        # Dropdown updates for the selectors and Textbox updates for the names.
         for i in range(MAX_DIMENSIONS):
             if i < len(demo_scale_names):
                 scale_name_updates.append(gr.Textbox(value=demo_scale_names[i]))
                 scale_pos_updates.append(
-                    gr.Textbox(value=CVFDemo.scales[demo_scale_names[i]]["Positive"])
+                    gr.Dropdown(
+                        value=list(CVFDemo.scales[demo_scale_names[i]]["Positive"])
+                    )
                 )
                 scale_neg_updates.append(
-                    gr.Textbox(value=CVFDemo.scales[demo_scale_names[i]]["Negative"])
+                    gr.Dropdown(
+                        value=list(CVFDemo.scales[demo_scale_names[i]]["Negative"])
+                    )
                 )
             else:
-                scale_name_updates.append(None)
-                scale_pos_updates.append(None)
-                scale_neg_updates.append(None)
+                scale_name_updates.append(gr.Textbox(value=""))
+                scale_pos_updates.append(gr.Dropdown(value=[]))
+                scale_neg_updates.append(gr.Dropdown(value=[]))
 
         return (
             [
@@ -714,13 +722,13 @@ def build_blocks(path_mgt: PathManager) -> tuple[gr.Blocks, Measurement]:
                     file_count="single", file_types=[".csv"], label="Input CSV File"
                 )
                 doc_col_selector = gr.Dropdown(
-                    choices="",
+                    choices=[],
                     label="Select Text Column",
                     interactive=False,
                     allow_custom_value=True,
                 )
                 doc_id_col_selector = gr.Dropdown(
-                    choices="",
+                    choices=[],
                     label="Select Document ID Column",
                     interactive=False,
                     allow_custom_value=True,
@@ -1036,10 +1044,11 @@ def build_blocks(path_mgt: PathManager) -> tuple[gr.Blocks, Measurement]:
                     with gr.Column(scale=4):
                         all_scale_pos_selector.append(
                             gr.Dropdown(
+                                choices=[],
                                 interactive=True,
                                 multiselect=True,
                                 label=f"Positive Dimensions for Scale {i + 1} (Required)",
-                                value=None,
+                                value=[],
                                 visible=True,
                                 allow_custom_value=True,
                             )
@@ -1047,10 +1056,11 @@ def build_blocks(path_mgt: PathManager) -> tuple[gr.Blocks, Measurement]:
                     with gr.Column(scale=4):
                         all_scale_neg_selector.append(
                             gr.Dropdown(
+                                choices=[],
                                 interactive=True,
                                 multiselect=True,
                                 label=f"Negative Dimensions for Scale {i + 1} (Optional)",
-                                value=None,
+                                value=[],
                                 visible=True,
                                 allow_custom_value=True,
                             )
