@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spar_measure"
-version = "0.3.0a1"
+version = "0.3.0"
 authors = [{ name = "Feng Mai", email = "maifeng@gmail.com" }]
 description = "SPAR: Semantic Projection with Active Retrieval"
 readme = "resources/pypi_intro.MD"
@@ -19,14 +19,14 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Text Processing :: Linguistic",
     "Intended Audience :: Science/Research",
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
 ]
 dynamic = ["dependencies"]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.4,<10",
-    "gradio_client>=0.6,<2",
+    "gradio_client>=2.0,<3",
 ]
 
 [project.scripts]
