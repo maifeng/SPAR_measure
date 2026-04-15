@@ -1,74 +1,80 @@
+# spar_measure
 
+**Measure short documents against theoretical concepts, without training a model.**
 
-<div class="row">
-    <div class="col-md-4">
-        <img src="resources/favicon_large.png" alt="logo" width="120" height="120" />
-    </div>
-    <div class="col-md-8">
-        <h1>SPAR: Semantic Projection with Active Retrieval</h1>
-    </div>
-</div>
+SPAR (Semantic Projection with Active Retrieval) is the reference implementation for Yan, Mai, Wu, Chen, and Li (2024), "A Computational Framework for Understanding Firm Communication During Disasters," *Information Systems Research* 35(2):590-608, [doi.org/10.1287/isre.2022.0128](https://doi.org/10.1287/isre.2022.0128). The package is domain-agnostic: bring your own corpus and your own concepts.
 
-- [Overview](#overview)
-- [Installation and Quick Start](#installation-and-quick-start)
-- [Headless Python API](#headless-python-api)
-- [Interface and Usage](#interface-and-usage)
-- [Road Map](ROADMAP.MD)
-- [Limitations](#limitations)
-- [License](#license)
+---
 
-## Overview
-SPAR is a Python NLP package that facilitates interactive measurement of text using LLMs. With SPAR, you can quantify short documents (e.g., social media posts) based on theoretical concepts such as *`creativity`* and *`collaboration`*, by measuring their semantic similarity with a set of example (seed) documents. 
+## The idea in one example
 
-**How it works:**
-1. Start with   
-   i. A corpus of documents that you want to measure;  
-   ii. generic seed sentences that define theoretical concepts, e.g., `Creativity: we should innovate` and `Collaboration: we should collaborate`.   
-2. Embed them into a semantic space using a pre-trained LLM.
-3. Use semantic search to find domain-specific exemplary documents in the corpus that reflect the theoretical concepts in context. For example:  _`'We encourage new ways of thinking'`_, _`'We should working together to weather the storm'`_.
-4. Compute the dot product between docuements and exemplary documents. 
+You have this DataFrame of short texts:
 
+| doc_id | text |
+|---|---|
+| 0 | We encourage new ways of thinking. |
+| 1 | Safety first in every department. |
+| 2 | Working together to weather the storm. |
 
-**Main features:**
+You want numeric scores for theoretical concepts like `Creativity` and `Safety`:
 
-* Enables domain-adaptive and few-shot measurements of theoretical concepts without requiring model training or fine-tuning. 
-* Combines the idea of semantic projection with active semantic search, which allows users to find the most relevant, context-specific documents to define the theoretical scales. 
-* Supports multiple state-of-the-arts text embedding models, such as [Sentence Transformers](https://www.sbert.net/docs/pretrained_models.html) and [OpenAI Text Embeddings API](https://platform.openai.com/docs/guides/embeddings). 
-* Comes with a user-friendly web interface that makes defining theoretical scales and conducting measurements intuitive and accessible. 
-* Reference:
-  * Bei Yan, Feng Mai, Chaojiang Wu, Rui Chen, Xiaolin Li (2023). A Computational Framework for Understanding Firm Communication During Disasters. Information Systems Research.
-https://doi.org/10.1287/isre.2022.0128 
+| doc_id | Creativity | Safety |
+|---|---|---|
+| 0 | 0.71 | 0.18 |
+| 1 | 0.22 | 0.83 |
+| 2 | 0.49 | 0.31 |
 
-SPAR is built on open source packages such as [HuggingFace Transformers](https://huggingface.co/transformers/), [SentenceTransformers](https://github.com/UKPLab/sentence-transformers/), and [Gradio](https://gradio.app/). 
+You supply short generic seed sentences that define each concept ("We should adapt and innovate.", "Safety is our top priority."), embed the corpus and the seeds with a pretrained sentence model, then project each document vector onto each concept direction. One function call does the whole pipeline.
 
-**Please note that the project is currently in a research preview (pre-alpha) stage**. To view the planned features for the project, please see the [Road Map](ROADMAP.MD).
+```python
+from spar_measure import score
 
-## Installation and Quick Start
-To quickly launch SPAR in Google Colab, click the following button and run the notebook code:
+out = score(docs, scales, text_col="text", id_col="doc_id")
+```
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/maifeng/SPAR_measure/blob/master/resources/example_colab.ipynb)
+The full runnable code with the exact scales dict is in the [90-second tour](#90-second-tour) below.
 
-You can also install SPAR on your own machine. It is recommended to use a virtual environment and upgrade pip first with `pip install -U pip`. SPAR can be installed via pip: 
+---
 
-    pip install -U spar-measure
+## Why not just train a classifier?
 
-To launch SPAR on your own machine, use the following command in the terminal:
+A supervised classifier needs labels. For most theoretical constructs, labels do not exist, and hand-coding thousands of documents per construct is expensive. Zero-shot LLM prompting works but costs per document and drifts across model versions.
 
-    python -m spar_measure.gui
+SPAR takes a third path. You never train and you never label. You:
 
-And open the interactive app in your browser at `http://localhost:7860/`.
+1. Write two or three generic seed sentences per concept (roughly five minutes per concept).
+2. Embed the corpus once with a frozen pretrained model (Sentence-BERT by default, or OpenAI Embeddings).
+3. Use the seed embedding to retrieve the most similar sentences from your own corpus. This is the "active retrieval" step. You review those, keep the in-domain ones, and feed them back as refined queries.
+4. Average the refined queries into a concept vector, then score each document by its dot product with that vector.
 
-If a CUDA GPU is available, SPAR will use it to speed up embedding. If you choose not to use a GPU, you can set the CUDA_VISIBLE_DEVICES environment variable to an empty string:
+The result is a continuous score per concept per document, grounded in your domain, produced without labels and without any gradient updates. The paper reports the method on Russell 3000 Facebook posts during disasters; the same pipeline applies to any corpus of short texts.
 
-    CUDA_VISIBLE_DEVICES="" python -m spar_measure.gui
+---
 
-See full documentation for other usage options [here](resources/Manual.MD).
+## Install
 
-## Headless Python API
+```bash
+pip install -U spar_measure
+```
 
-For Colab and batch scripts, the `spar_measure.score(...)` function runs the
-full pipeline without a browser. It accepts a pandas DataFrame and a scale
-spec, and returns a DataFrame with one column per scale.
+Optional extras:
+
+```bash
+pip install "spar_measure[vector]"   # ChromaDB persistence for big corpora
+pip install "spar_measure[dev]"      # pytest + gradio_client for contributing
+```
+
+Python 3.10 or later. GPU is used automatically when available. To force CPU:
+
+```bash
+CUDA_VISIBLE_DEVICES="" python -m spar_measure gui
+```
+
+---
+
+## 90-second tour
+
+A minimal end-to-end run with three documents and three dimensions combined into two scales.
 
 ```python
 import pandas as pd
@@ -95,25 +101,86 @@ scales = {
     },
 }
 
-# Sentence-BERT (default, local, CPU/GPU). Returns (n_docs, 1 + n_scales).
 out = score(docs, scales, text_col="text", id_col="doc_id")
+print(out)
+```
 
-# Or use the OpenAI Embeddings API:
+Two data structures drive everything:
+
+- `dimensions` maps a dimension name to a list of `queries` (the refined seed sentences).
+- `scales` combines one or more dimensions into a signed construct. `Safety = Safe - Danger` is the textbook bipolar scale.
+
+Swap the embedding backend to OpenAI with one extra keyword:
+
+```python
 out = score(
     docs, scales,
     text_col="text", id_col="doc_id",
-    openai_api_key="sk-...",
-    # optional: openai_embedding_model="text-embedding-3-large",
+    openai_api_key="sk-...",                              # switches backend
+    openai_embedding_model="text-embedding-3-large",      # optional
 )
-
-# Or reuse a precomputed embeddings matrix (skips the embed step):
-import numpy as np
-emb = np.load("embeddings.npy")
-out = score(docs, scales, text_col="text", id_col="doc_id",
-            precomputed_embeddings=emb)
 ```
 
-There is also a headless CLI for one-off scoring:
+Reuse an embedding matrix you have already computed:
+
+```python
+import numpy as np
+
+embeddings = np.load("corpus_embeddings.npy")   # shape: (n_docs, dim)
+out = score(
+    docs, scales,
+    text_col="text", id_col="doc_id",
+    precomputed_embeddings=embeddings,
+)
+```
+
+---
+
+## Two paths: headless or GUI
+
+| Path | When to use | How to launch |
+|---|---|---|
+| `score(...)` headless | Colab, batch scripts, reproducible pipelines, large corpora | `from spar_measure import score` |
+| Gradio web UI | First-time use, exploring seeds, live active retrieval, teaching | `python -m spar_measure gui` |
+
+The UI is the best place to discover good queries for a new construct. It walks through upload, embed, seed, retrieve, refine, define scales, and score in a browser at `http://localhost:7860/`. Once your scale definitions stabilize, export them and rerun the same scales headlessly on the full corpus.
+
+The UI flow, tab by tab:
+
+1. Upload a CSV with a text column and an ID column. Pick an embedding model. Embed.
+2. For each dimension, write a generic seed sentence, retrieve the most similar lines from your corpus, mark the ones that fit, and use them as new queries. Repeat until the retrieved set looks in-domain.
+3. Combine dimensions into signed scales (positive dimensions minus negative dimensions).
+4. Score all documents. Download the result as CSV.
+
+Screenshots live under `resources/imgs/`.
+
+---
+
+## The `score()` knobs
+
+```python
+score(
+    docs,                               # pandas DataFrame
+    scales,                             # dict: dimensions + scales
+    text_col="text",                    # column holding the text
+    id_col="doc_id",                    # column holding the ID (auto-added if None)
+    embedding_model=None,               # e.g. "all-MiniLM-L6-v2" or "text-embedding-3-large"
+    openai_api_key=None,                # supply to switch to OpenAI embeddings
+    openai_embedding_model="text-embedding-3-small",
+    whiten=False,                       # apply ZCA whitening to the score matrix
+    single_subspace=False,              # joint-subspace projection (S Sᵀ)⁺ S X
+    batch_size=8,                       # embedding batch size
+    precomputed_embeddings=None,        # (n_docs, dim) np.ndarray to skip embedding
+)
+```
+
+Returns a DataFrame of shape `(n_docs, 1 + n_scales)` with the ID column first and one column per scale. Full signature and Google-style docstring live in `src/spar_measure/api.py`.
+
+---
+
+## Headless CLI
+
+For one-off scoring from the shell:
 
 ```bash
 python -m spar_measure measure \
@@ -123,52 +190,32 @@ python -m spar_measure measure \
     --id_col=doc_id
 ```
 
-## Interface and Usage
+`scales.json` has the same shape as the `scales` dict above.
 
-1. Upload a CSV file with the text content to be measured and a document ID column. Select embedding method and embed the documents.
-
-<img src="resources/imgs/sc1.png" alt="sc1" style="width: 100%;"/>
-
-2. Define a set of dimensions and generic seeds. For example:
-   * `Creative`: *"We should adapt and innovate."*
-   * `Positive emotion`: *"We are happy."*
-   * `Danger`: *"It is dangerous."*
-
-<img src="resources/imgs/sc2.png" alt="sc2a" style="width: 100%;"/>
-  
-3. Using the generic seeds as query, search for sentences in the corpus that are similar to the generic seeds. 
-    For example:
-
-   * `Creative`: 
-     * *"Digital technology will play a huge role going forward."*
-     * *"How do you adapt to these uncharted waters? "*
-   * `Positive emotion`: 
-     * *"The smiling faces say it all."*
-     * *"A round of applause to all of our recent WaFd Foundation grant recipients!"*
-   * `Danger`: *"How do you prevent the spread of a deadly virus?"*
-    
-    Repeat this step and use the relevant outputs as new queries to search for more sentences that exemplify the dimensions.
-
-    Enter the final context-specific exemplary sentences to the query box and click the "Embed Queries and Save Dimensions" button. The average embedding vectors of the exemplary sentences will be used to define the scale for measuring the documents.
-
-<img src="resources/imgs/sc2b.png" alt="sc2b" style="width: 100%;"/>
-<img src="resources/imgs/sc2c.png" alt="sc2c" style="width: 100%;"/>
-
-4. Define scales, which consists of one or more demensions. For example:  
-     * `Sentiment = Positive emotion - Negative emotion`
-     * `Creativity = Creative` 
-
-<img src="resources/imgs/sc3.png" alt="sc3" style="width: 100%;"/>
-
-5. Project the document embeddings onto the scale. A CSV file with the results can be downloaded.
-
-<img src="resources/imgs/sc4.png" alt="sc4" style="width: 100%;"/>
+---
 
 ## Limitations
-* SPAR may not be suitable for longer or more complex documents since it represents a document using a single vector.
-* Sentence embeddings may not be suitable for theoretical constructs that rely primarily on syntactic features.
-* Pretrained LLMs may not have up-to-date world knowledge or new vocabularies.
-* Semantic projection is a linear operation, so it may not capture non-linear patterns in the data as well as fine-tuning approaches.
+
+- SPAR represents each document with a single vector, so it struggles on long or multi-topic documents. Pre-split long documents into sentences or paragraphs and score those.
+- Sentence embeddings encode meaning, not syntax. Constructs that hinge on syntactic features (negation polarity, modal voice, tense) are harder.
+- Pretrained models carry a fixed world knowledge cutoff. New vocabulary and new entities will be weakly represented.
+- Semantic projection is linear. Highly nonlinear constructs may be better served by supervised fine-tuning when labels are available.
+
+---
+
+## Origin and attribution
+
+Originally built for:
+
+> Yan, Bei, Feng Mai, Chaojiang Wu, Rui Chen, and Xiaolin Li (2024).
+> "A Computational Framework for Understanding Firm Communication During Disasters."
+> *Information Systems Research* 35(2):590-608.
+> [doi.org/10.1287/isre.2022.0128](https://doi.org/10.1287/isre.2022.0128)
+
+SPAR itself has no knowledge of firms, disasters, or any particular domain. It is a general-purpose measurement tool for short text against concept seeds. Bring your own corpus and your own scales.
+
+Built on top of [Hugging Face Transformers](https://huggingface.co/transformers/), [Sentence-Transformers](https://www.sbert.net/), and [Gradio](https://gradio.app/).
 
 ## License
-GPL-3.0
+
+GPL-3.0.

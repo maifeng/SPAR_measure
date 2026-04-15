@@ -28,6 +28,9 @@ dev = [
     "pytest>=7.4,<10",
     "gradio_client>=2.0,<3",
 ]
+vector = [
+    "chromadb>=0.5",
+]
 
 [project.scripts]
 spar = "spar_measure.cli:main"
