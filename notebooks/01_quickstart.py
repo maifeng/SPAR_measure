@@ -29,8 +29,7 @@
 # ## 1. Install (run once in Colab)
 
 # %%
-# Uncomment and run in Colab:
-# !pip install -q spar-measure
+# !pip install -q spar-measure    # uncomment and run in Colab
 
 # %% [markdown]
 # ## 2. Imports
@@ -44,6 +43,8 @@ from spar_measure import score
 #
 # The package bundles 2,000 Facebook posts (from companies affected by
 # natural disasters) with pre-computed sentence-transformer embeddings.
+# `importlib.resources.files()` locates files packaged inside the installed
+# library, so this works on any machine without downloading anything extra.
 
 # %%
 from importlib.resources import files
@@ -103,9 +104,15 @@ scales = {
 # %% [markdown]
 # ## 5. Score the corpus
 #
-# One function call. The first run downloads the sentence-transformer model
-# (~80 MB); subsequent runs use the cached model. On a Colab T4 this
-# takes about 30 seconds for 2,000 documents.
+# One function call. We use the pre-computed embeddings bundled with the
+# package to skip the ~30s embedding step. In your own project, omit the
+# `precomputed_embeddings` argument and the library will embed from scratch
+# using the default `all-MiniLM-L6-v2` model.
+#
+# Each output column is a bipolar scale. Positive scores mean the text
+# leans toward the positive poles (e.g., Create + Compete for
+# External-Internal); negative scores lean toward the negative poles
+# (Collaborate + Control).
 
 # %%
 import numpy as np
@@ -139,14 +146,18 @@ for ax, col in zip(axes, ["External-Internal", "Flexible-Stable"]):
 fig.tight_layout()
 plt.show()
 
+# %%
+out.to_csv("spar_scores.csv", index=False)
+print("Saved to spar_scores.csv")
+
 # %% [markdown]
 # ## 7. Score without pre-computed embeddings
 #
 # If you do not have pre-computed embeddings, `score()` will embed the
 # corpus from scratch. This uses the default `all-MiniLM-L6-v2` model.
+# Uncomment the cell below to try (takes ~30s on Colab T4).
 
 # %%
-# Embed from scratch (slower, ~30s on Colab T4 for 2000 docs):
 # out_fresh = score(docs, scales, text_col="text", id_col="doc_id")
 
 # %% [markdown]
@@ -208,14 +219,15 @@ out_custom = score(
 out_custom.head(10)
 
 # %% [markdown]
-# ## 10. The Gradio GUI (local only)
+# ## 10. The Gradio GUI (interactive seed iteration)
 #
 # For interactive seed-sentence iteration ("active retrieval"), launch
 # the GUI locally:
 #
 # ```python
 # from spar_measure import run_gui
-# run_gui()
+# run_gui()                          # on your laptop
+# run_gui(share=True)                # in Colab (creates a public tunnel)
 # ```
 #
 # The GUI lets you search the corpus for exemplar sentences, refine your
@@ -238,3 +250,14 @@ out_custom.head(10)
 # %%
 import spar_measure
 print(spar_measure.__paper__)
+
+# %% [markdown]
+# ## 12. Related packages
+#
+# This workshop covers three tools. Pick the one that fits your research question:
+#
+# | Package | Best for | Runtime |
+# |---|---|---|
+# | **`lmsyz_genai_ie_rfs`** | Structured extraction: culture type, causes, consequences, causal triples | Requires an LLM API key |
+# | **`spar_measure`** (this notebook) | Scoring short texts on a custom semantic scale (e.g., CVF dimensions) | Local CPU/GPU, no API key |
+# | **`lmsy_w2v_rfs`** | Historical, deterministic 5-dimension culture scores from word2vec | Local CPU, no API key |
