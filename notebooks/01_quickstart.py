@@ -24,42 +24,56 @@
 # "A Computational Framework for Understanding Firm Communication
 # During Disasters," *Information Systems Research* 35(2):590-608.
 # https://doi.org/10.1287/isre.2022.0128
+#
+# **Corpus**: 2,000 Glassdoor "pros" reviews about corporate culture,
+# sampled from the RFS 2026 validation dataset. The same corpus is used
+# across all three workshop notebooks for comparability.
 
 # %% [markdown]
-# ## 1. Install (run once in Colab)
+# ## 1. Install and download the corpus
 
 # %%
 # !pip install -q spar-measure    # uncomment and run in Colab
 
+# %%
+# Download the shared workshop corpus and pre-computed embeddings (uncomment in Colab):
+# !wget -q https://raw.githubusercontent.com/maifeng/culture-llm-workshop/main/data/glassdoor_culture_2000.csv
+# !wget -q https://raw.githubusercontent.com/maifeng/culture-llm-workshop/main/data/glassdoor_culture_2000_emb.npy
+
 # %% [markdown]
-# ## 2. Imports
+# ## 2. Load the corpus
 
 # %%
+import os
 import pandas as pd
+import numpy as np
 from spar_measure import score
 
-# %% [markdown]
-# ## 3. Load sample corpus
-#
-# The package bundles 2,000 Facebook posts (from companies affected by
-# natural disasters) with pre-computed sentence-transformer embeddings.
-# `importlib.resources.files()` locates files packaged inside the installed
-# library, so this works on any machine without downloading anything extra.
+CORPUS_PATH = "glassdoor_culture_2000.csv"
+EMB_PATH = "glassdoor_culture_2000_emb.npy"
+if not os.path.exists(CORPUS_PATH):
+    CORPUS_PATH = "../../../data/glassdoor_culture_2000.csv"
+    EMB_PATH = "../../../data/glassdoor_culture_2000_emb.npy"
+
+docs = pd.read_csv(CORPUS_PATH)
+print(f"Corpus: {len(docs)} reviews, {docs['firm_id'].nunique()} firms")
+docs[["review_id", "text"]].head(3)
 
 # %%
-from importlib.resources import files
-
-data_dir = files("spar_measure") / "sample_data"
-docs = pd.read_csv(str(data_dir / "sample_text.csv"))
-print(f"Corpus: {len(docs)} documents")
-docs.head(3)
+embeddings = np.load(EMB_PATH)
+print(f"Pre-computed embeddings: {embeddings.shape}")
+# These were computed with all-MiniLM-L6-v2, the same model SPAR uses
+# by default. If you skip this step, score() embeds from scratch (~30s).
 
 # %% [markdown]
-# ## 4. Define dimensions and scales
+# ## 3. Define dimensions and scales
 #
 # SPAR works with the Competing Values Framework (CVF). We define four
 # poles as seed sentences, then combine them into two bipolar scales:
 # External-Internal and Flexible-Stable.
+#
+# You can write any seed sentences that capture your theoretical construct.
+# More seeds per dimension improve coverage but are not strictly necessary.
 
 # %%
 scales = {
@@ -102,35 +116,29 @@ scales = {
 }
 
 # %% [markdown]
-# ## 5. Score the corpus
+# ## 4. Score the corpus
 #
-# One function call. We use the pre-computed embeddings bundled with the
-# package to skip the ~30s embedding step. In your own project, omit the
-# `precomputed_embeddings` argument and the library will embed from scratch
-# using the default `all-MiniLM-L6-v2` model.
-#
-# Each output column is a bipolar scale. Positive scores mean the text
-# leans toward the positive poles (e.g., Create + Compete for
-# External-Internal); negative scores lean toward the negative poles
-# (Collaborate + Control).
+# One function call. Each output column is a bipolar scale. Positive
+# scores mean the text leans toward the positive poles (e.g.,
+# Create + Compete for External-Internal); negative scores lean toward
+# the negative poles (Collaborate + Control).
 
 # %%
-import numpy as np
-
-embeddings = np.load(str(data_dir / "sample_emb.npy"))
-print(f"Pre-computed embeddings shape: {embeddings.shape}")
-
 out = score(
     docs,
     scales,
     text_col="text",
-    id_col="doc_id",
+    id_col="review_id",
     precomputed_embeddings=embeddings,
 )
 out.head(10)
 
+# %%
+out.to_csv("spar_glassdoor_scores.csv", index=False)
+print("Saved to spar_glassdoor_scores.csv")
+
 # %% [markdown]
-# ## 6. Inspect the distribution
+# ## 5. Inspect the distribution
 
 # %%
 out[["External-Internal", "Flexible-Stable"]].describe()
@@ -143,68 +151,83 @@ for ax, col in zip(axes, ["External-Internal", "Flexible-Stable"]):
     ax.hist(out[col], bins=40, edgecolor="white", alpha=0.8, color="#9E1B32")
     ax.set_title(col)
     ax.set_xlabel("Score")
+fig.suptitle("SPAR scores on 2,000 Glassdoor culture reviews", fontsize=13)
 fig.tight_layout()
 plt.show()
 
-# %%
-out.to_csv("spar_scores.csv", index=False)
-print("Saved to spar_scores.csv")
-
 # %% [markdown]
-# ## 7. Score without pre-computed embeddings
+# ## 6. Merge scores with metadata
 #
-# If you do not have pre-computed embeddings, `score()` will embed the
-# corpus from scratch. This uses the default `all-MiniLM-L6-v2` model.
-# Uncomment the cell below to try (takes ~30s on Colab T4).
+# Since we scored the same corpus used by the other two notebooks, we
+# can merge SPAR scores with the original metadata (culture rating,
+# overall rating, year) and look for patterns.
 
 # %%
-# out_fresh = score(docs, scales, text_col="text", id_col="doc_id")
+merged = docs.merge(out, on="review_id")
+print(f"Correlation: External-Internal vs rating_culture = "
+      f"{merged['External-Internal'].corr(merged['rating_culture']):.3f}")
+print(f"Correlation: Flexible-Stable vs rating_culture = "
+      f"{merged['Flexible-Stable'].corr(merged['rating_culture']):.3f}")
 
 # %% [markdown]
-# ## 8. ZCA whitening and subspace projection
+# ## 7. ZCA whitening
 #
 # ZCA whitening decorrelates the scale scores so that External-Internal
-# and Flexible-Stable are orthogonal. The single-subspace projection
-# uses a joint pseudoinverse instead of independent dot products.
+# and Flexible-Stable become orthogonal. This matters when your scales
+# share dimensions or when you use the scores as regressors.
 
 # %%
 out_whitened = score(
     docs,
     scales,
     text_col="text",
-    id_col="doc_id",
+    id_col="review_id",
     precomputed_embeddings=embeddings,
     whiten=True,
 )
-print("Correlation (raw):", out[["External-Internal", "Flexible-Stable"]].corr().iloc[0, 1].round(3))
-print("Correlation (ZCA):", out_whitened[["External-Internal", "Flexible-Stable"]].corr().iloc[0, 1].round(3))
+print("Correlation (raw):",
+      out[["External-Internal", "Flexible-Stable"]].corr().iloc[0, 1].round(3))
+print("Correlation (ZCA):",
+      out_whitened[["External-Internal", "Flexible-Stable"]].corr().iloc[0, 1].round(3))
+
+# %% [markdown]
+# ## 8. Score without pre-computed embeddings
+#
+# If you do not have pre-computed embeddings, `score()` embeds the corpus
+# from scratch using the default `all-MiniLM-L6-v2` model. Uncomment the
+# cell below to try (takes ~30s on Colab T4 for 2,000 docs).
+
+# %%
+# out_fresh = score(docs, scales, text_col="text", id_col="review_id")
 
 # %% [markdown]
 # ## 9. Define your own construct
 #
 # SPAR is not limited to CVF. Any construct that can be expressed as
-# seed sentences works. Here is a simple "urgency" vs "reassurance" scale.
+# seed sentences works. Here is a simple "people-focused" vs
+# "performance-focused" scale, which maps onto two of the six culture
+# types from the RFS 2026 paper.
 
 # %%
 custom_scales = {
     "dimensions": {
-        "Urgent": {
+        "People": {
             "queries": [
-                "This is an emergency, act now.",
-                "Immediate action is required to address the crisis.",
+                "We care about our employees and their well-being.",
+                "The company invests in people, not just profits.",
             ],
         },
-        "Reassuring": {
+        "Performance": {
             "queries": [
-                "Everything is under control, do not worry.",
-                "We are confident the situation will improve soon.",
+                "Results are what matter here.",
+                "We measure everything and hold people accountable.",
             ],
         },
     },
     "scales": {
-        "Urgency-Reassurance": {
-            "pos_dims": ["Urgent"],
-            "neg_dims": ["Reassuring"],
+        "People-Performance": {
+            "pos_dims": ["People"],
+            "neg_dims": ["Performance"],
         },
     },
 }
@@ -213,7 +236,7 @@ out_custom = score(
     docs,
     custom_scales,
     text_col="text",
-    id_col="doc_id",
+    id_col="review_id",
     precomputed_embeddings=embeddings,
 )
 out_custom.head(10)
@@ -254,7 +277,8 @@ print(spar_measure.__paper__)
 # %% [markdown]
 # ## 12. Related packages
 #
-# This workshop covers three tools. Pick the one that fits your research question:
+# This workshop covers three tools on the **same 2,000 Glassdoor reviews**.
+# Pick the one that fits your research question:
 #
 # | Package | Best for | Runtime |
 # |---|---|---|
