@@ -94,6 +94,31 @@ def test_run_gui_whitelists_sample_data_dir(tmp_path: Path) -> None:
     )
 
 
+def test_measure_docs_returns_error_textbox_when_scales_missing(tmp_path: Path) -> None:
+    """``measure_docs`` must catch errors so the spinner doesn't get stuck.
+
+    Reproduces the workshop bug where clicking *Measure Documents* before
+    saving scales raised ``ValueError: scale_embeddings is empty`` from
+    ``project_documents``. Without a try/except in the UI handler, Gradio
+    leaves every output bound to the click in its in-flight (spinning)
+    state forever. The fix returns an inline error textbox and clears the
+    download File component instead.
+    """
+    from spar_measure.state import MeasurementState
+    from spar_measure.ui import Measurement, PathManager
+
+    m = Measurement(PathManager(out_dir=str(tmp_path)))
+    state = MeasurementState()
+    # No scale_embeddings, no embeddings — the original code would raise.
+    textbox, file_update, path = m.measure_docs(
+        single_subspace="No", whitening="No", measurement_state=state
+    )
+    assert getattr(textbox, "value", "").lower().startswith("measurement failed"), (
+        f"expected an error textbox, got {textbox!r}"
+    )
+    assert path is None
+
+
 def test_run_gui_preserves_user_allowed_paths(tmp_path: Path) -> None:
     """User-supplied ``allowed_paths`` must be preserved alongside sample_data."""
     import spar_measure.ui as ui_mod

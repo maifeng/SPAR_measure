@@ -591,26 +591,46 @@ class Measurement:
             single_subspace,
             whitening,
         )
-        scores = core.project_documents(
-            measurement_state["embeddings"],
-            measurement_state["scale_embeddings"],
-            single_subspace=(single_subspace == "Yes"),
-            whiten=(whitening == "Yes"),
-        )
-        scores = scores.round(4)
-        id_col = measurement_state["doc_id_col_name"]
-        scores.insert(0, id_col, measurement_state["input_df"][id_col].to_numpy())
-        Path(self.path_mgt.out_dir).mkdir(parents=True, exist_ok=True)
-        out_path = Path(self.path_mgt.out_dir, "measurement_output.csv")
-        scores.to_csv(out_path, index=False)
-        return (
-            gr.Textbox(
-                visible=True,
-                value="Measurement completed. Download the results below.",
-            ),
-            gr.File(visible=True),
-            str(out_path),
-        )
+        try:
+            scores = core.project_documents(
+                measurement_state["embeddings"],
+                measurement_state["scale_embeddings"],
+                single_subspace=(single_subspace == "Yes"),
+                whiten=(whitening == "Yes"),
+            )
+            scores = scores.round(4)
+            id_col = measurement_state["doc_id_col_name"]
+            scores.insert(0, id_col, measurement_state["input_df"][id_col].to_numpy())
+            Path(self.path_mgt.out_dir).mkdir(parents=True, exist_ok=True)
+            out_path = Path(self.path_mgt.out_dir, "measurement_output.csv")
+            scores.to_csv(out_path, index=False)
+            return (
+                gr.Textbox(
+                    visible=True,
+                    value="Measurement completed. Download the results below.",
+                ),
+                gr.File(visible=True),
+                str(out_path),
+            )
+        except Exception as e:
+            # Without this catch the spinner on `measure_result` would never
+            # clear; uncaught exceptions in Gradio handlers leave every bound
+            # output stuck in its in-flight state. Surface the failure inline
+            # so the user knows what to do, rather than waiting forever.
+            logger.exception("measure_docs failed")
+            return (
+                gr.Textbox(
+                    visible=True,
+                    value=(
+                        "Measurement failed. Make sure you clicked "
+                        "Embed Queries and Save Dimensions in Tab 2 and "
+                        "Save Scales in Tab 3 before measuring.\n"
+                        f"Error: {e}"
+                    ),
+                ),
+                gr.File(visible=False),
+                None,
+            )
 
     def load_example_dataset(self, measurement_state: MeasurementState) -> list[Any]:
         """Load the bundled 2000-post sample corpus and populate the CVF example."""
@@ -1009,13 +1029,6 @@ def build_blocks(path_mgt: PathManager) -> tuple[gr.Blocks, Measurement]:
                 outputs=all_rows_dims,
                 api_visibility="private",
             )
-            for box in all_search_query_boxes:
-                box.change(
-                    fn=m.toggle_row_vis,
-                    inputs=[n_dim_slider, state],
-                    outputs=[],
-                    api_visibility="private",
-                )
             for dim_i, btn in enumerate(all_search_btns):
                 btn.click(
                     fn=m.semantic_search,
@@ -1123,13 +1136,6 @@ def build_blocks(path_mgt: PathManager) -> tuple[gr.Blocks, Measurement]:
                 outputs=all_rows_scale,
                 api_visibility="private",
             )
-            for box in all_scale_name_boxes + all_scale_pos_selector + all_scale_neg_selector:
-                box.change(
-                    fn=m.toggle_row_vis_scales,
-                    inputs=[n_scale_slider, state],
-                    outputs=[],
-                    api_visibility="private",
-                )
             save_scale_button = gr.Button("Save Scales")
             scale_define_results = gr.Textbox(visible=False, label="")
             scale_def_file_download = gr.File(visible=False)
