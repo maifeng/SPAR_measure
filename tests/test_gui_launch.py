@@ -110,13 +110,13 @@ def test_measure_docs_returns_error_textbox_when_scales_missing(tmp_path: Path) 
     m = Measurement(PathManager(out_dir=str(tmp_path)))
     state = MeasurementState()
     # No scale_embeddings, no embeddings — the original code would raise.
-    textbox, file_update, path = m.measure_docs(
+    textbox, file_update = m.measure_docs(
         single_subspace="No", whitening="No", measurement_state=state
     )
     assert getattr(textbox, "value", "").lower().startswith("measurement failed"), (
         f"expected an error textbox, got {textbox!r}"
     )
-    assert path is None
+    assert getattr(file_update, "value", "missing") is None
 
 
 def test_run_gui_preserves_user_allowed_paths(tmp_path: Path) -> None:

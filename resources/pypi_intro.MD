@@ -17,7 +17,7 @@ SPAR is a Python NLP package that facilitates interactive measurement of text us
 * Supports multiple state-of-the-arts text embedding models, such as [Sentence Transformers](https://www.sbert.net/docs/pretrained_models.html) and [OpenAI Text Embeddings API](https://platform.openai.com/docs/guides/embeddings). 
 * Comes with a user-friendly web interface that makes defining theoretical scales and conducting measurements intuitive and accessible. 
 * Reference:
-  * Bei Yan, Feng Mai, Chaojiang Wu, Rui Chen, Xiaolin Li (2023). A Computational Framework for Understanding Firm Communication During Disasters. Information Systems Research.
+  * Bei Yan, Feng Mai, Chaojiang Wu, Rong Chen, Xiaolin Li (2024). A Computational Framework for Understanding Firm Communication During Disasters. Information Systems Research 35(2):590-608.
 https://doi.org/10.1287/isre.2022.0128 
 
 SPAR is built on open source packages such as [HuggingFace Transformers](https://huggingface.co/transformers/), [SentenceTransformers](https://github.com/UKPLab/sentence-transformers/), and [Gradio](https://gradio.app/). 

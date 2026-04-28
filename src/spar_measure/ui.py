@@ -447,8 +447,7 @@ class Measurement:
                         ),
                     )
                 ]
-                + [gr.File(visible=True)]
-                + [str(json_path)]
+                + [gr.File(visible=True, value=str(json_path))]
                 + [gr.Markdown(visible=False)]
             )
         except Exception as e:
@@ -466,8 +465,7 @@ class Measurement:
                         ),
                     )
                 ]
-                + [gr.File(visible=False)]
-                + [None]
+                + [gr.File(visible=False, value=None)]
                 + [gr.Markdown(visible=True)]
             )
 
@@ -547,8 +545,7 @@ class Measurement:
                         ),
                     )
                 ]
-                + [gr.File(visible=True)]
-                + [str(json_path)]
+                + [gr.File(visible=True, value=str(json_path))]
                 + [gr.Markdown(visible=False)]
             )
         except Exception as e:
@@ -565,8 +562,7 @@ class Measurement:
                         ),
                     )
                 ]
-                + [gr.File(visible=False)]
-                + [None]
+                + [gr.File(visible=False, value=None)]
                 + [gr.Markdown(visible=True)]
             )
 
@@ -577,7 +573,7 @@ class Measurement:
         single_subspace: str,
         whitening: str,
         measurement_state: MeasurementState,
-    ) -> tuple[Any, Any, str]:
+    ) -> tuple[Any, Any]:
         """Score all documents against the defined scales and save as CSV.
 
         Fixes C-04: dropped the dead relative-path ``mkdir("measure_output")``
@@ -609,8 +605,7 @@ class Measurement:
                     visible=True,
                     value="Measurement completed. Download the results below.",
                 ),
-                gr.File(visible=True),
-                str(out_path),
+                gr.File(visible=True, value=str(out_path)),
             )
         except Exception as e:
             # Without this catch the spinner on `measure_result` would never
@@ -628,8 +623,7 @@ class Measurement:
                         f"Error: {e}"
                     ),
                 ),
-                gr.File(visible=False),
-                None,
+                gr.File(visible=False, value=None),
             )
 
     def load_example_dataset(self, measurement_state: MeasurementState) -> list[Any]:
@@ -748,7 +742,7 @@ def build_blocks(path_mgt: PathManager) -> tuple[gr.Blocks, Measurement]:
                     value=(
                         "* SPAR is a Python package and web interface for measuring "
                         "short text documents using semantic projection.\n"
-                        "* Reference: __Bei Yan, Feng Mai, Chaojiang Wu, Rui Chen, "
+                        "* Reference: __Bei Yan, Feng Mai, Chaojiang Wu, Rong Chen, "
                         "Xiaolin Li (2024). A Computational Framework for Understanding "
                         "Firm Communication During Disasters. Information Systems "
                         "Research 35(2):590-608. https://doi.org/10.1287/isre.2022.0128__\n"
@@ -1146,7 +1140,7 @@ def build_blocks(path_mgt: PathManager) -> tuple[gr.Blocks, Measurement]:
                 outputs=all_scale_pos_selector
                 + all_scale_neg_selector
                 + [dim_define_results]
-                + [dimension_def_file_download] * 2
+                + [dimension_def_file_download]
                 + [tab2_warn],
             )
 
@@ -1163,7 +1157,7 @@ def build_blocks(path_mgt: PathManager) -> tuple[gr.Blocks, Measurement]:
                 + all_scale_pos_selector
                 + all_scale_neg_selector,
                 outputs=[scale_define_results]
-                + [scale_def_file_download] * 2
+                + [scale_def_file_download]
                 + [tab3_warn],
             )
             gr.Markdown(
@@ -1204,7 +1198,7 @@ def build_blocks(path_mgt: PathManager) -> tuple[gr.Blocks, Measurement]:
                     whitening_radio_btn,
                     state,
                 ],
-                outputs=[measure_result, measure_results_file, measure_results_file],
+                outputs=[measure_result, measure_results_file],
             )
 
         example_btn.click(
