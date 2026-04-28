@@ -1,13 +1,13 @@
 <div align="center">
   <img src="resources/favicon_large.png" alt="SPAR logo" width="120" height="120" />
   <h1>SPAR: Semantic Projection with Active Retrieval</h1>
-  <p><em>Measure short text against theoretical concepts. No labels, no fine-tuning.</em></p>
+  <p><em>Score short text on bipolar concepts you define as <code>positive_seeds − negative_seeds</code>.</em></p>
 </div>
 
 <div align="center">
 
-[![Open GUI in Colab](https://img.shields.io/badge/Colab-Try%20the%20GUI-orange?logo=googlecolab&logoColor=white)](https://colab.research.google.com/github/maifeng/SPAR_measure/blob/master/resources/example_colab.ipynb)
-[![Open Headless API in Colab](https://img.shields.io/badge/Colab-Try%20the%20Headless%20API-blue?logo=googlecolab&logoColor=white)](https://colab.research.google.com/github/maifeng/SPAR_measure/blob/master/resources/example_colab_headless.ipynb)
+[![GUI in Colab](https://img.shields.io/badge/Colab-GUI%20notebook-orange?logo=googlecolab&logoColor=white)](https://colab.research.google.com/github/maifeng/SPAR_measure/blob/master/resources/example_colab.ipynb)
+[![Headless API in Colab](https://img.shields.io/badge/Colab-Headless%20API%20notebook-blue?logo=googlecolab&logoColor=white)](https://colab.research.google.com/github/maifeng/SPAR_measure/blob/master/resources/example_colab_headless.ipynb)
 [![PyPI version](https://img.shields.io/pypi/v/spar-measure.svg)](https://pypi.org/project/spar-measure/)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
 
@@ -16,54 +16,32 @@
 ---
 
 - [Overview](#overview)
-- [Two ways to try it (one click each)](#two-ways-to-try-it-one-click-each)
+- [Quickstart notebooks](#quickstart-notebooks)
 - [Install](#install)
-- [Interactive GUI walkthrough](#interactive-gui-walkthrough)
-- [Headless API: 90-second tour](#headless-api-90-second-tour)
-- [The `score()` knobs](#the-score-knobs)
-- [Headless CLI](#headless-cli)
+- [GUI walkthrough](#gui-walkthrough)
+- [Python API](#python-api)
+- [`score()` reference](#score-reference)
 - [Limitations](#limitations)
 - [Citation](#citation)
 - [License](#license)
 
 ## Overview
 
-SPAR is a Python NLP package that quantifies short documents (social media posts, earnings-call sentences, employee reviews) against theoretical concepts such as *innovation*, *collaboration*, or *risk* — **without training a model and without hand-labeling a single document**. You provide a corpus and a few generic seed sentences per concept; SPAR uses a frozen pretrained sentence encoder and **active retrieval** to refine those seeds into a domain-grounded concept vector, then projects each document onto the vector to produce a continuous score.
+SPAR measures concepts in text by **semantic projection**. A concept is defined as a *difference between vector poles*:
 
-```mermaid
-flowchart LR
-    A[Corpus<br/>short documents] --> EMB[Embed<br/>frozen sentence model]
-    B[Seed sentences<br/>per concept] --> EMB
-    EMB --> DE[Document<br/>embeddings]
-    EMB --> SE[Seed<br/>embeddings]
-    SE --> AR[Active retrieval<br/>find in-domain exemplars]
-    DE --> AR
-    AR --> CV[Concept vector<br/>mean of refined exemplars]
-    DE --> P[Project<br/>dot product]
-    CV --> P
-    P --> O[Scores<br/>per doc per scale]
+- **Innovation** = embed("we innovate, we adapt") − embed("we trust tradition, we preserve")
+- **Sentiment** = embed("we are happy, things are great") − embed("we are worried, things are bad")
+- **Risk** = embed("uncertainty, exposure") − embed("safety, hedging")
 
-    classDef input fill:#fef3f4,stroke:#9E1B32,stroke-width:2px,color:#1a1a1a
-    classDef process fill:#ffffff,stroke:#444,stroke-width:1.5px,color:#1a1a1a
-    classDef vector fill:#ffffff,stroke:#9E1B32,stroke-width:1.5px,stroke-dasharray:4 3,color:#1a1a1a
-    classDef output fill:#9E1B32,stroke:#9E1B32,stroke-width:2px,color:#ffffff
+Embed your seed sentences and your documents with the same pretrained sentence encoder. The concept axis is the (normalized) difference between the positive-pole and negative-pole seed averages. Each document's score on that concept is its dot product with the axis: positive scores lean toward the positive pole, negative scores toward the negative pole, and the magnitude is the strength of the lean.
 
-    class A,B input
-    class EMB,AR,P process
-    class DE,SE,CV vector
-    class O output
-```
+<p align="center">
+  <img src="resources/imgs/spar_projection.png" alt="A document vector projected onto an Innovation axis built as embed('we innovate') minus embed('we follow tradition'). The score is +0.27, the actual SPAR output for this text." width="75%" />
+  <br/>
+  <em>The Innovation axis is the difference between the two pole embeddings. A document vector is projected onto the axis (dotted line); the position of the projection is the score. <code>+0.27</code> is the actual <code>score()</code> output for this text under the seed sentences in the Python example below.</em>
+</p>
 
-The result is a continuous score per concept per document, grounded in your domain, produced without labels and without any gradient updates.
-
-**Main features:**
-
-- Domain-adaptive few-shot measurement of theoretical concepts; no training or fine-tuning.
-- Active semantic search lets users discover the most relevant context-specific seed sentences in their own corpus.
-- Multiple state-of-the-art text embedding backends: [Sentence-Transformers](https://www.sbert.net/docs/pretrained_models.html), [OpenAI Text Embeddings](https://platform.openai.com/docs/guides/embeddings).
-- Two paths: a friendly **Gradio web UI** for exploration and seed iteration, and a **headless `score()` API** for batch jobs and reproducible pipelines.
-- Optional **ChromaDB** persistence for very large corpora.
-- Optional **ZCA whitening** to decorrelate scales when they share dimensions.
+**Active retrieval** addresses the second half of the problem: generic seed sentences like "we innovate" rarely point in the direction your corpus actually expresses the concept. SPAR retrieves the nearest neighbours of each seed from your corpus, lets you keep the in-domain ones (e.g., *"Cutting-edge AI now powers every team"*, *"Industrial automation investment is increasing"*), and re-anchors the concept vector on those refined exemplars. The GUI supports this iterative refinement loop; the headless `score()` API runs the final projection in one call once seeds are stable.
 
 **Reference:**
 
@@ -72,14 +50,14 @@ The result is a continuous score per concept per document, grounded in your doma
 > *Information Systems Research* 35(2):590-608.
 > [doi.org/10.1287/isre.2022.0128](https://doi.org/10.1287/isre.2022.0128)
 
-Built on top of [Hugging Face Transformers](https://huggingface.co/transformers/), [Sentence-Transformers](https://github.com/UKPLab/sentence-transformers/), and [Gradio](https://gradio.app/).
+Backends: [Sentence-Transformers](https://www.sbert.net/) (default, runs locally on CPU/GPU) or [OpenAI Embeddings](https://platform.openai.com/docs/guides/embeddings). Optional [ChromaDB](https://www.trychroma.com/) persistence for large corpora. Optional ZCA whitening to decorrelate scales that share dimensions.
 
-## Two ways to try it (one click each)
+## Quickstart notebooks
 
-| Notebook | What you do | Click to launch |
+| Notebook | Contents | Open |
 |---|---|---|
-| **GUI Quickstart** | Launch the Gradio web app inside Colab. Upload a CSV, embed, iterate seeds via active retrieval, define scales, and download scored CSV. | [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/maifeng/SPAR_measure/blob/master/resources/example_colab.ipynb) |
-| **Headless API Quickstart** | Score 2,000 documents in 60 seconds using the `score()` function. No GUI, no API key, runs on the bundled sample corpus. | [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/maifeng/SPAR_measure/blob/master/resources/example_colab_headless.ipynb) |
+| **GUI** | Launches the Gradio web app inside Colab. Upload a CSV, embed, iterate seeds via active retrieval, define scales, download scored CSV. | [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/maifeng/SPAR_measure/blob/master/resources/example_colab.ipynb) |
+| **Headless API** | Scores 2,000 bundled-sample documents on a bipolar scale via `score()`. Runs on Colab CPU in about 60 seconds, no API key required. | [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/maifeng/SPAR_measure/blob/master/resources/example_colab_headless.ipynb) |
 
 ## Install
 
@@ -110,9 +88,9 @@ then open the interactive app in your browser at `http://localhost:7860/`.
 
 See the full [user manual](resources/Manual.MD) for advanced usage.
 
-## Interactive GUI walkthrough
+## GUI walkthrough
 
-The GUI is the best place to discover good seed queries for a new construct. It walks you through the entire pipeline in a browser. Below is the five-step flow.
+The GUI walks through the pipeline in a browser, five steps:
 
 **1. Upload a CSV with text and ID columns. Choose an embedding model. Embed.**
 
@@ -152,9 +130,21 @@ Repeat: feed the relevant outputs back as new queries to surface more exemplars.
 
 <img src="resources/imgs/sc4.png" alt="Step 5: score and download" width="100%" />
 
-## Headless API: 90-second tour
+**Hand-off to the Python API.** When you click *Save Scales*, the GUI also writes a single `scales.json` file in the format `score()` expects. Drop that file into a notebook and rerun the same scales headlessly on a much larger corpus:
 
-For batch jobs, reproducible pipelines, and Colab demos, skip the GUI and call `score()` directly. Below: three short documents scored on a single bipolar scale, **Innovation − Tradition**.
+```python
+import json, pandas as pd
+from spar_measure import score
+
+spec = json.load(open("scales.json"))
+out  = score(pd.read_csv("big_corpus.csv"), spec, text_col="text", id_col="doc_id")
+```
+
+No reshaping required: the GUI's exported file matches the API schema exactly.
+
+## Python API
+
+Once seeds are stable, call `score()` directly. Three short documents scored on **Innovation − Tradition**:
 
 ```python
 import pandas as pd
@@ -207,7 +197,7 @@ Output (reproducible with the default `all-MiniLM-L6-v2` backend):
 Two data structures drive everything:
 
 - `dimensions` maps a dimension name to a list of `queries` (the refined seed sentences).
-- `scales` combines dimensions into a signed construct. The pattern `pos_dims − neg_dims` is the textbook bipolar scale; you can also build unipolar (`neg_dims=[]`) or multi-pole composite scales.
+- `scales` combines dimensions into a signed construct. `pos_dims − neg_dims` is the standard bipolar form; `neg_dims=[]` gives a unipolar scale; multi-pole composites are also supported.
 
 Switch to OpenAI embeddings with one extra keyword:
 
@@ -216,7 +206,7 @@ out = score(
     docs, scales,
     text_col="text", id_col="doc_id",
     openai_api_key="sk-...",
-    openai_embedding_model="text-embedding-3-large",
+    openai_embedding_model="text-embedding-3-small",
 )
 ```
 
@@ -229,9 +219,9 @@ out = score(docs, scales, text_col="text", id_col="doc_id",
             precomputed_embeddings=embeddings)
 ```
 
-The full runnable demo (with the bundled 2,000-document sample corpus) lives in [`resources/example_colab_headless.ipynb`](resources/example_colab_headless.ipynb) — one click to open in Colab via the badge above.
+The full runnable end-to-end demo on the bundled 2,000-document sample corpus lives in [`resources/example_colab_headless.ipynb`](resources/example_colab_headless.ipynb).
 
-## The `score()` knobs
+## `score()` reference
 
 ```python
 score(
@@ -242,28 +232,18 @@ score(
     embedding_model=None,               # e.g. "all-MiniLM-L6-v2" or "text-embedding-3-large"
     openai_api_key=None,                # supply to switch to OpenAI embeddings
     openai_embedding_model="text-embedding-3-small",
-    whiten=False,                       # apply ZCA whitening to the score matrix
+    whiten=False,                       # ZCA-whiten the score matrix
     single_subspace=False,              # joint-subspace projection (S Sᵀ)⁺ S X
     batch_size=8,                       # embedding batch size
     precomputed_embeddings=None,        # (n_docs, dim) np.ndarray to skip embedding
 )
 ```
 
-Returns a DataFrame of shape `(n_docs, 1 + n_scales)` with the ID column first and one column per scale. Full signature and Google-style docstring live in `src/spar_measure/api.py`.
+Returns a DataFrame of shape `(n_docs, 1 + n_scales)` with the ID column first and one column per scale. Google-style docstring and full signature live in `src/spar_measure/api.py`.
 
-## Headless CLI
+`whiten=True` applies ZCA whitening to the scale-score matrix, which decorrelates scales that share dimensions (e.g., two scales both using a `Create` pole will be correlated by construction; whitening rotates them to be orthogonal while preserving as much of the original geometry as possible). Use it when you intend to feed the scores into downstream regressions and need the scales to be statistically independent.
 
-For one-off scoring from the shell:
-
-```bash
-python -m spar_measure measure \
-    --docs=corpus.csv \
-    --scales=scales.json \
-    --out=scored.csv \
-    --id_col=doc_id
-```
-
-`scales.json` has the same shape as the `scales` dict above.
+A shell entry point also exists for one-off scoring (`python -m spar_measure measure ...`); see the [user manual](resources/Manual.MD).
 
 ## Limitations
 

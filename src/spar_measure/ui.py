@@ -8,7 +8,6 @@ exists to mediate Gradio's dict-of-updates return convention.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 from operator import itemgetter
@@ -21,7 +20,13 @@ import pandas as pd
 import torch
 
 from . import core, util_funcs
-from .io import load_embeddings, read_csv_smart
+from .io import (
+    SCALES_JSON_NAME,
+    gui_state_to_scales_spec,
+    load_embeddings,
+    read_csv_smart,
+    write_scales_spec,
+)
 from .state import (
     DEFAULT_EMBED_BATCH_SIZE,
     DEFAULT_OPENAI_EMBEDDING_MODEL,
@@ -393,13 +398,23 @@ class Measurement:
         progress: Any = gr.Progress(),
         *dims_boxes: str,
     ) -> list[Any]:
-        """Embed each dimension's queries and persist ``dimensions_queries.json``."""
+        """Embed each dimension's queries and persist a partial ``scales.json``.
+
+        The file written here contains only the ``"dimensions"`` section
+        (no ``"scales"`` yet, since the user has not defined any). It is
+        not yet runnable through :func:`spar_measure.score`; the same
+        path is overwritten with a complete spec when the user clicks
+        Save Scales in the next tab.
+        """
         try:
             half = len(dims_boxes) // 2
             all_dim_names = dims_boxes[:half]
             all_dim_queries = dims_boxes[half:]
-            measurement_state["dim_embeddings"] = {}
-            measurement_state["dim_queries"] = {}
+            # Build into local dicts; commit to state ONLY on full success so a
+            # mid-loop embed failure does not wipe the user's prior valid
+            # dimensions (code review issue 1).
+            new_embeddings: dict[str, Any] = {}
+            new_queries: dict[str, list[str]] = {}
             for i in range(measurement_state["n_dims"]):
                 dim_name = (
                     all_dim_names[i].strip()
@@ -410,11 +425,14 @@ class Measurement:
                 dim_embedding = self.embed_texts(
                     queries, progress=progress, measurement_state=measurement_state
                 )
-                measurement_state["dim_embeddings"][dim_name] = dim_embedding.mean(axis=0)
-                measurement_state["dim_queries"][dim_name] = queries
-            json_path = Path(self.path_mgt.out_dir, "dimensions_queries.json")
-            with open(json_path, "w") as f:
-                json.dump(measurement_state["dim_queries"], f)
+                new_embeddings[dim_name] = dim_embedding.mean(axis=0)
+                new_queries[dim_name] = queries
+            measurement_state["dim_embeddings"] = new_embeddings
+            measurement_state["dim_queries"] = new_queries
+            spec = gui_state_to_scales_spec(measurement_state["dim_queries"])
+            json_path = write_scales_spec(
+                spec, Path(self.path_mgt.out_dir, SCALES_JSON_NAME)
+            )
             return (
                 [gr.Dropdown(choices=list(measurement_state["dim_queries"].keys()))]
                 * 20
@@ -423,8 +441,9 @@ class Measurement:
                         visible=True,
                         value=(
                             f"Dimensions saved: {list(measurement_state['dim_queries'].keys())}. "
-                            "You can download the json file below to keep a record of "
-                            "the final queries. Proceed to the next tab to define scales."
+                            "Download scales.json below to keep a record. "
+                            "Proceed to the next tab to define scales; this same "
+                            "file will be updated with the complete spec."
                         ),
                     )
                 ]
@@ -455,44 +474,76 @@ class Measurement:
     def save_scales(
         self, measurement_state: MeasurementState, *scale_boxes: Any
     ) -> list[Any]:
-        """Combine dimension embeddings into scales and persist their definitions."""
+        """Combine dimension embeddings into scales and persist them to ``scales.json``.
+
+        Raises a clear error if Save Dimensions has not run first, rather
+        than silently overwriting the partial ``scales.json`` with a
+        broken spec (code review issue 3). Also identifies the offending
+        scale + dimension when a scale references a missing or renamed
+        dimension (code review issue 2).
+        """
         try:
+            if not measurement_state["dim_queries"]:
+                raise RuntimeError(
+                    "No dimensions are saved yet. Go back to the previous tab, "
+                    "fill in dimension names and queries, and click "
+                    "'Embed Queries and Save Dimensions' before saving scales."
+                )
             third = len(scale_boxes) // 3
             all_scale_names = scale_boxes[:third]
             all_pos_scales = scale_boxes[third : 2 * third]
             all_neg_scales = scale_boxes[2 * third :]
-            measurement_state["scale_embeddings"] = {}
-            measurement_state["scale_definitions"] = {}
+            # Stage everything in locals; only commit to state on full success
+            # so a missing-dim error in one scale does not partially overwrite
+            # previously saved scale definitions.
+            new_definitions: dict[str, dict[str, list[str]]] = {}
+            new_embeddings: dict[str, Any] = {}
             for i in range(measurement_state["n_scales"]):
                 scale_name = (
                     all_scale_names[i].strip()
                     if all_scale_names[i].strip()
                     else f"Scale_{i + 1}"
                 )
-                measurement_state["scale_definitions"][scale_name] = {
-                    "Positive": list(all_pos_scales[i]),
-                    "Negative": list(all_neg_scales[i]),
+                pos_dims = list(all_pos_scales[i])
+                neg_dims = list(all_neg_scales[i])
+                missing = [
+                    d for d in (*pos_dims, *neg_dims)
+                    if d not in measurement_state["dim_embeddings"]
+                ]
+                if missing:
+                    raise KeyError(
+                        f"Scale {scale_name!r} references unknown dimension(s) "
+                        f"{missing}. Saved dimensions: "
+                        f"{sorted(measurement_state['dim_embeddings']) or '(none)'}. "
+                        f"Re-save dimensions on the previous tab or pick a "
+                        f"different name in the dropdown."
+                    )
+                new_definitions[scale_name] = {
+                    "Positive": pos_dims,
+                    "Negative": neg_dims,
                 }
-                pos = [
-                    measurement_state["dim_embeddings"][d] for d in all_pos_scales[i]
-                ]
-                neg = [
-                    measurement_state["dim_embeddings"][d] for d in all_neg_scales[i]
-                ]
-                measurement_state["scale_embeddings"][scale_name] = core.combine_scale(
-                    pos, neg
-                )
-            json_path = Path(self.path_mgt.out_dir, "scale_definitions.json")
-            with open(json_path, "w") as f:
-                json.dump(measurement_state["scale_definitions"], f)
+                pos = [measurement_state["dim_embeddings"][d] for d in pos_dims]
+                neg = [measurement_state["dim_embeddings"][d] for d in neg_dims]
+                new_embeddings[scale_name] = core.combine_scale(pos, neg)
+            measurement_state["scale_definitions"] = new_definitions
+            measurement_state["scale_embeddings"] = new_embeddings
+            spec = gui_state_to_scales_spec(
+                measurement_state["dim_queries"],
+                measurement_state["scale_definitions"],
+            )
+            json_path = write_scales_spec(
+                spec, Path(self.path_mgt.out_dir, SCALES_JSON_NAME)
+            )
             return (
                 [
                     gr.Textbox(
                         visible=True,
                         value=(
                             f"Scales saved: {list(measurement_state['scale_definitions'].keys())}. "
-                            "You can download the json file below. Proceed to the next "
-                            "tab to measure using semantic projection."
+                            "Download scales.json below; in a notebook you can load it "
+                            "with `json.load(open('scales.json'))` and pass it directly "
+                            "to `spar_measure.score(docs, spec, ...)`. "
+                            "Proceed to the next tab to measure using semantic projection."
                         ),
                     )
                 ]
