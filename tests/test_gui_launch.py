@@ -57,3 +57,66 @@ def test_gradio_launch_serves_config(tmp_path: Path) -> None:
         assert '"version"' in body
     finally:
         demo.close()
+
+
+def test_run_gui_whitelists_sample_data_dir(tmp_path: Path) -> None:
+    """``run_gui`` must inject the bundled sample_data dir into ``allowed_paths``.
+
+    Reproduces the Colab failure where clicking "Load Example Dataset and
+    Scales" raised ``gradio.exceptions.InvalidPathError`` because the
+    sample CSV/NPY live inside site-packages and Gradio 6 only serves
+    files under cwd, /tmp, or ``allowed_paths``. The fix is in
+    ``run_gui`` and this guards against regressions.
+    """
+    import spar_measure.ui as ui_mod
+    from spar_measure.ui import PathManager, run_gui
+
+    captured: dict = {}
+
+    class _Stub:
+        def queue(self) -> None:
+            return None
+
+        def launch(self, **kwargs) -> None:
+            captured.update(kwargs)
+
+    real_build = ui_mod.build_blocks
+    ui_mod.build_blocks = lambda pm: (_Stub(), None)  # type: ignore[assignment]
+    try:
+        run_gui(out_dir=str(tmp_path), mode="local")
+    finally:
+        ui_mod.build_blocks = real_build
+
+    allowed = [str(p) for p in (captured.get("allowed_paths") or [])]
+    sample_dir = str(PathManager(out_dir=str(tmp_path)).sample_data_dir)
+    assert sample_dir in allowed, (
+        f"run_gui did not whitelist {sample_dir!r}; allowed_paths={allowed!r}"
+    )
+
+
+def test_run_gui_preserves_user_allowed_paths(tmp_path: Path) -> None:
+    """User-supplied ``allowed_paths`` must be preserved alongside sample_data."""
+    import spar_measure.ui as ui_mod
+    from spar_measure.ui import PathManager, run_gui
+
+    captured: dict = {}
+
+    class _Stub:
+        def queue(self) -> None:
+            return None
+
+        def launch(self, **kwargs) -> None:
+            captured.update(kwargs)
+
+    real_build = ui_mod.build_blocks
+    ui_mod.build_blocks = lambda pm: (_Stub(), None)  # type: ignore[assignment]
+    user_extra = str(tmp_path / "extra")
+    try:
+        run_gui(out_dir=str(tmp_path), mode="local", allowed_paths=[user_extra])
+    finally:
+        ui_mod.build_blocks = real_build
+
+    allowed = [str(p) for p in (captured.get("allowed_paths") or [])]
+    sample_dir = str(PathManager(out_dir=str(tmp_path)).sample_data_dir)
+    assert sample_dir in allowed
+    assert user_extra in allowed

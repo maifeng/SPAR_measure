@@ -1293,6 +1293,15 @@ def run_gui(
     else:
         auth = (username, password)
 
+    # Gradio 6 refuses to serve files outside cwd / tmp / allowed_paths. The
+    # "Load Example Dataset and Scales" button returns paths inside the
+    # installed package's sample_data/ directory, so we whitelist it here.
+    sample_dir = str(path_mgt.sample_data_dir)
+    user_allowed = kwargs.pop("allowed_paths", None) or []
+    if isinstance(user_allowed, (str, Path)):
+        user_allowed = [user_allowed]
+    allowed_paths = [sample_dir, *(str(p) for p in user_allowed)]
+
     favicon = path_mgt.sample_data_dir / "favicon.png"
     if mode == "public":
         demo.launch(
@@ -1300,10 +1309,15 @@ def run_gui(
             auth=auth,
             server_name="0.0.0.0",
             favicon_path=favicon,
+            allowed_paths=allowed_paths,
             **kwargs,
         )
     elif mode == "local":
-        demo.launch(favicon_path=favicon, **kwargs)
+        demo.launch(
+            favicon_path=favicon,
+            allowed_paths=allowed_paths,
+            **kwargs,
+        )
     else:
         raise ValueError(f"Invalid mode {mode!r}; must be 'local' or 'public'.")
 

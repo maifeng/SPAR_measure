@@ -33,7 +33,7 @@
 # ## 1. Install
 
 # %%
-# !pip install -q -U spar-measure
+# !pip install -q -U spar-measure --upgrade-strategy only-if-needed
 
 # %% [markdown]
 # ## 2. Load the bundled sample corpus
