@@ -20,6 +20,7 @@
 - [Install](#install)
 - [GUI walkthrough](#gui-walkthrough)
 - [Python API](#python-api)
+- [ChromaStore: persistent embeddings for large corpora](#chromastore-persistent-embeddings-for-large-corpora)
 - [`score()` reference](#score-reference)
 - [Limitations](#limitations)
 - [Citation](#citation)
@@ -85,8 +86,6 @@ python -m spar_measure gui
 ```
 
 then open the interactive app in your browser at `http://localhost:7860/`.
-
-See the full [user manual](resources/Manual.MD) for advanced usage.
 
 ## GUI walkthrough
 
@@ -221,6 +220,43 @@ out = score(docs, scales, text_col="text", id_col="doc_id",
 
 The full runnable end-to-end demo on the bundled 2,000-document sample corpus lives in [`resources/example_colab_headless.ipynb`](resources/example_colab_headless.ipynb).
 
+## ChromaStore: persistent embeddings for large corpora
+
+For corpora of 50k+ documents, re-embedding on every run is slow. `ChromaStore` (available with `pip install "spar-measure[vector]"`) persists embeddings to disk via ChromaDB so subsequent runs skip the model entirely.
+
+Three-step workflow:
+
+```python
+from spar_measure.vector_store import ChromaStore
+from spar_measure import score
+
+# Step 1: embed once and persist.
+store = ChromaStore("my_corpus", persist_dir="/data/chroma")
+store.embed_and_store(docs_df, text_col="text", model_name="all-MiniLM-L6-v2")
+
+# Step 2: load on subsequent runs.
+store = ChromaStore.load("/data/chroma", "my_corpus")
+emb = store.get_all_embeddings()   # (n_docs, dim) float32 array
+ids = store.get_all_ids()          # list[str]
+
+# Step 3: score with precomputed embeddings (no re-embedding).
+out = score(docs_df, scales, text_col="text", id_col="doc_id",
+            precomputed_embeddings=emb)
+```
+
+Active retrieval against the store:
+
+```python
+query_vec = emb[0]  # or embed a seed sentence separately
+doc_ids, neighbour_embs = store.query_by_vector(query_vec, n_results=100)
+```
+
+Install the extra before use:
+
+```bash
+pip install "spar-measure[vector]"
+```
+
 ## `score()` reference
 
 ```python
@@ -243,7 +279,7 @@ Returns a DataFrame of shape `(n_docs, 1 + n_scales)` with the ID column first a
 
 `whiten=True` applies ZCA whitening to the scale-score matrix, which decorrelates scales that share dimensions (e.g., two scales both using a `Create` pole will be correlated by construction; whitening rotates them to be orthogonal while preserving as much of the original geometry as possible). Use it when you intend to feed the scores into downstream regressions and need the scales to be statistically independent.
 
-A shell entry point also exists for one-off scoring (`python -m spar_measure measure ...`); see the [user manual](resources/Manual.MD).
+Console entry points are also available for one-off scoring: `spar measure ...` and `spar-measure measure ...` are equivalent to `python -m spar_measure measure ...`.
 
 ## Limitations
 
@@ -258,7 +294,7 @@ If you use SPAR in your research, please cite:
 
 ```bibtex
 @article{yan2024spar,
-  author  = {Yan, Bei and Mai, Feng and Wu, Chaojiang and Chen, Rong and Li, Xiaolin},
+  author  = {Yan, Bei and Mai, Feng and Wu, Chaojiang and Chen, Rui and Li, Xiaolin},
   title   = {A Computational Framework for Understanding Firm Communication During Disasters},
   journal = {Information Systems Research},
   volume  = {35},

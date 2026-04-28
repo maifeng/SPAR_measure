@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spar_measure"
-version = "0.3.5"
+version = "0.3.6"
 authors = [{ name = "Feng Mai", email = "maifeng@gmail.com" }]
 description = "SPAR: Semantic Projection with Active Retrieval"
 readme = "resources/pypi_intro.MD"

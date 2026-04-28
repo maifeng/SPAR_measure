@@ -1,54 +1,125 @@
+## SPAR: Semantic Projection with Active Retrieval
 
-## Overview
-SPAR is a Python NLP package that facilitates interactive measurement of text using LLMs. With SPAR, you can quantify short documents (e.g., social media posts) based on theoretical concepts such as *`creativity`* and *`collaboration`*, by measuring their semantic similarity with a set of example (seed) documents. 
+SPAR scores short text on bipolar concepts you define as `positive_seeds - negative_seeds`.
+No model training or fine-tuning required.
 
-**How it works:**
-1. Start with   
-   i. A corpus of documents that you want to measure;  
-   ii. generic seed sentences that define theoretical concepts, e.g., `Creativity: we should innovate` and `Collaboration: we should collaborate`.   
-2. Embed them into a semantic space using a pre-trained LLM.
-3. Use semantic search to find domain-specific exemplary documents in the corpus that reflect the theoretical concepts in context. For example:  _`'We encourage new ways of thinking'`_, _`'We should working together to weather the storm'`_.
-4. Compute the dot product between docuements and exemplary documents. 
+**Reference:** Yan, Bei, Feng Mai, Chaojiang Wu, Rui Chen, and Xiaolin Li (2024).
+"A Computational Framework for Understanding Firm Communication During Disasters."
+*Information Systems Research* 35(2): 590-608. https://doi.org/10.1287/isre.2022.0128
 
-**Main features:**
+---
 
-* Enables domain-adaptive and few-shot measurements of theoretical concepts without requiring model training or fine-tuning. 
-* Combines the idea of semantic projection with active semantic search, which allows users to find the most relevant, context-specific documents to define the theoretical scales. 
-* Supports multiple state-of-the-arts text embedding models, such as [Sentence Transformers](https://www.sbert.net/docs/pretrained_models.html) and [OpenAI Text Embeddings API](https://platform.openai.com/docs/guides/embeddings). 
-* Comes with a user-friendly web interface that makes defining theoretical scales and conducting measurements intuitive and accessible. 
-* Reference:
-  * Bei Yan, Feng Mai, Chaojiang Wu, Rui Chen, Xiaolin Li (2024). A Computational Framework for Understanding Firm Communication During Disasters. Information Systems Research 35(2):590-608.
-https://doi.org/10.1287/isre.2022.0128 
+## Install
 
-SPAR is built on open source packages such as [HuggingFace Transformers](https://huggingface.co/transformers/), [SentenceTransformers](https://github.com/UKPLab/sentence-transformers/), and [Gradio](https://gradio.app/). 
+```bash
+pip install -U spar-measure
+```
 
+Optional extras:
 
-## Installation and Quick Start
-To quickly launch SPAR in Google Colab, click the following button and run the notebook code:
+```bash
+pip install "spar-measure[vector]"   # ChromaDB persistence for large corpora
+pip install "spar-measure[dev]"      # pytest + gradio_client for contributing
+```
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/maifeng/SPAR_measure/blob/master/resources/example_colab.ipynb)
+Python 3.10 or later.
 
-You can also install SPAR on your own machine. It is recommended to use a virtual environment and upgrade pip first with `pip install -U pip`. SPAR can be installed via pip: 
+---
 
-    pip install -U spar-measure
+## GUI quickstart
 
-To launch SPAR on your own machine, use the following command in the terminal:
+Launch the browser-based app:
 
-    python -m spar_measure.gui
+```bash
+python -m spar_measure gui
+# equivalently: spar gui   or   spar-measure gui
+```
 
-And open the interactive app in your browser at `http://localhost:7860/`.
+Open `http://localhost:7860/` in your browser. The GUI walks through five steps:
+upload a CSV, embed, define dimension seeds, run active retrieval to refine seeds,
+define scales (positive pole minus negative pole), and score. When you click
+*Save Scales*, the GUI writes a `scales.json` file that the headless `score()` API
+accepts directly.
 
-If a CUDA GPU is available, SPAR will use it to speed up embedding. If you choose not to use a GPU, you can set the CUDA_VISIBLE_DEVICES environment variable to an empty string:
+Run headless in Google Colab:
 
-    CUDA_VISIBLE_DEVICES="" python -m spar_measure.gui
+[![GUI in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/maifeng/SPAR_measure/blob/master/resources/example_colab.ipynb)
 
+---
 
-## Limitations
-* SPAR may not be suitable for longer or more complex documents since it represents a document using a single vector.
-* Sentence embeddings may not be suitable for theoretical constructs that rely primarily on syntactic features.
-* Pretrained LLMs may not have up-to-date world knowledge or new vocabularies.
-* Semantic projection is a linear operation, so it may not capture non-linear patterns in the data as well as fine-tuning approaches.
+## Headless `score()` quickstart
 
+Once seeds are stable (exported from the GUI or written by hand), call `score()`
+directly without launching Gradio:
 
-## Additional Details
-For additional details and source code, please refer to the project's [GitHub Repository](https://github.com/maifeng/SPAR_measure).
+```python
+import pandas as pd
+from spar_measure import score
+
+docs = pd.DataFrame({
+    "doc_id": [0, 1, 2],
+    "text": [
+        "We encourage new ways of thinking.",
+        "Quarterly results exceeded analyst expectations.",
+        "We honor the founders' commitment to quality.",
+    ],
+})
+
+scales = {
+    "dimensions": {
+        "Innovation": {"queries": ["We constantly experiment with new ideas.",
+                                   "Innovation drives everything we do."]},
+        "Tradition":  {"queries": ["We honor the practices that built this company.",
+                                   "Our heritage and craft define who we are."]},
+    },
+    "scales": {
+        "Innovation-Tradition": {"pos_dims": ["Innovation"], "neg_dims": ["Tradition"]},
+    },
+}
+
+out = score(docs, scales, text_col="text", id_col="doc_id")
+print(out)
+```
+
+Headless Colab notebook (no API key required, runs on CPU in ~60 seconds):
+
+[![Headless API in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/maifeng/SPAR_measure/blob/master/resources/example_colab_headless.ipynb)
+
+---
+
+## ChromaStore: persistent embeddings for large corpora
+
+For 50k+ document corpora, install the `[vector]` extra and persist embeddings to disk:
+
+```python
+from spar_measure.vector_store import ChromaStore
+from spar_measure import score
+
+# Embed once.
+store = ChromaStore("my_corpus", persist_dir="/data/chroma")
+store.embed_and_store(docs_df, text_col="text")
+
+# Load and score on subsequent runs (no re-embedding).
+store = ChromaStore.load("/data/chroma", "my_corpus")
+out = score(docs_df, scales, text_col="text", id_col="doc_id",
+            precomputed_embeddings=store.get_all_embeddings())
+```
+
+---
+
+## Citation
+
+```bibtex
+@article{yan2024spar,
+  author  = {Yan, Bei and Mai, Feng and Wu, Chaojiang and Chen, Rui and Li, Xiaolin},
+  title   = {A Computational Framework for Understanding Firm Communication During Disasters},
+  journal = {Information Systems Research},
+  volume  = {35},
+  number  = {2},
+  pages   = {590--608},
+  year    = {2024},
+  doi     = {10.1287/isre.2022.0128}
+}
+```
+
+Source code and documentation: https://github.com/maifeng/SPAR_measure
