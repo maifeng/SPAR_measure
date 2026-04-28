@@ -33,7 +33,7 @@
 # ## 1. Install and download the corpus
 
 # %%
-# !pip install -q -U spar-measure --upgrade-strategy only-if-needed   # uncomment and run in Colab
+!pip install -q -U spar-measure --upgrade-strategy only-if-needed
 
 # %%
 # Download the shared workshop corpus and pre-computed embeddings (uncomment in Colab):
