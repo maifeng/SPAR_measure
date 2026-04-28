@@ -24,8 +24,19 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
-from openai import OpenAI
-from tenacity import retry, stop_after_attempt, wait_exponential
+from openai import (
+    OpenAI,
+    APIConnectionError,
+    APITimeoutError,
+    InternalServerError,
+    RateLimitError,
+)
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 from transformers import AutoModel, AutoTokenizer
 
 from . import util_funcs
@@ -148,9 +159,11 @@ def embed_with_openai(
 ) -> np.ndarray:
     """Embed ``docs`` with the OpenAI Embeddings API.
 
-    Failures of :func:`openai.embeddings.create` are retried up to 20 times
-    with exponential backoff (2-60s). If a batch still fails, the exception is
-    re-raised rather than swallowed (fixes C-02 and C-03).
+    Transient failures (rate limit, connection, timeout, 5xx) of
+    :func:`openai.embeddings.create` are retried up to 6 times with exponential
+    backoff (2-60s). Non-transient errors such as ``AuthenticationError`` (bad
+    API key) and ``BadRequestError`` (malformed input) are re-raised
+    immediately so the GUI shows the failure instead of hanging on retries.
 
     Args:
         docs: List of strings to embed.
@@ -170,9 +183,13 @@ def embed_with_openai(
     client = OpenAI(api_key=api_key)
 
     @retry(
-        stop=stop_after_attempt(20),
+        stop=stop_after_attempt(6),
         wait=wait_exponential(multiplier=1, min=2, max=60),
+        retry=retry_if_exception_type(
+            (RateLimitError, APIConnectionError, APITimeoutError, InternalServerError)
+        ),
         after=util_funcs.print_error,
+        reraise=True,
     )
     def _call(batch: list[str]) -> Any:
         return client.embeddings.create(input=batch, model=model)
