@@ -24,7 +24,7 @@
 # seed refinement), open the companion notebook:
 # [example_colab.ipynb](https://colab.research.google.com/github/maifeng/SPAR_measure/blob/master/resources/example_colab.ipynb).
 #
-# Method reference: Yan, Bei, Feng Mai, Chaojiang Wu, Rong Chen, and
+# Method reference: Yan, Bei, Feng Mai, Chaojiang Wu, Rui Chen, and
 # Xiaolin Li (2024). "A Computational Framework for Understanding Firm
 # Communication During Disasters." *Information Systems Research*
 # 35(2):590-608. https://doi.org/10.1287/isre.2022.0128
@@ -284,7 +284,7 @@ print(f"whitened correlation: {whitened[cols].corr().iloc[0, 1]:+.3f}")
 # ## 12. Citation
 #
 # ```
-# Yan, Bei, Feng Mai, Chaojiang Wu, Rong Chen, and Xiaolin Li. 2024.
+# Yan, Bei, Feng Mai, Chaojiang Wu, Rui Chen, and Xiaolin Li. 2024.
 # "A Computational Framework for Understanding Firm Communication
 # During Disasters." Information Systems Research 35(2):590-608.
 # https://doi.org/10.1287/isre.2022.0128

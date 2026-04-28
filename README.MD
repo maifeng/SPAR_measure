@@ -45,7 +45,7 @@ Embed your seed sentences and your documents with the same pretrained sentence e
 
 **Reference:**
 
-> Yan, Bei, Feng Mai, Chaojiang Wu, Rong Chen, and Xiaolin Li (2024).
+> Yan, Bei, Feng Mai, Chaojiang Wu, Rui Chen, and Xiaolin Li (2024).
 > "A Computational Framework for Understanding Firm Communication During Disasters."
 > *Information Systems Research* 35(2):590-608.
 > [doi.org/10.1287/isre.2022.0128](https://doi.org/10.1287/isre.2022.0128)

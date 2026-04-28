@@ -20,7 +20,7 @@
 # dot-product projection.
 #
 # Originally developed for:
-# Yan, Bei, Feng Mai, Chaojiang Wu, Rong Chen, and Xiaolin Li (2024),
+# Yan, Bei, Feng Mai, Chaojiang Wu, Rui Chen, and Xiaolin Li (2024),
 # "A Computational Framework for Understanding Firm Communication
 # During Disasters," *Information Systems Research* 35(2):590-608.
 # https://doi.org/10.1287/isre.2022.0128
@@ -263,7 +263,7 @@ out_custom.head(10)
 # If you use this package in research, please cite:
 #
 # ```
-# Yan, Bei, Feng Mai, Chaojiang Wu, Rong Chen, and Xiaolin Li. 2024.
+# Yan, Bei, Feng Mai, Chaojiang Wu, Rui Chen, and Xiaolin Li. 2024.
 # "A Computational Framework for Understanding Firm Communication
 # During Disasters."
 # Information Systems Research 35(2):590-608.

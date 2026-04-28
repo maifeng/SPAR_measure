@@ -742,7 +742,7 @@ def build_blocks(path_mgt: PathManager) -> tuple[gr.Blocks, Measurement]:
                     value=(
                         "* SPAR is a Python package and web interface for measuring "
                         "short text documents using semantic projection.\n"
-                        "* Reference: __Bei Yan, Feng Mai, Chaojiang Wu, Rong Chen, "
+                        "* Reference: __Bei Yan, Feng Mai, Chaojiang Wu, Rui Chen, "
                         "Xiaolin Li (2024). A Computational Framework for Understanding "
                         "Firm Communication During Disasters. Information Systems "
                         "Research 35(2):590-608. https://doi.org/10.1287/isre.2022.0128__\n"
